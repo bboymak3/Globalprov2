@@ -20,7 +20,7 @@ export async function onRequestPost(context) {
       });
     }
     
-    // Obtener próximo número de orden (transacción)
+    // Obtener próximo número de orden
     const configResult = await env.DB.prepare(
       "SELECT ultimo_numero_orden FROM Configuracion WHERE id = 1"
     ).first();
@@ -39,7 +39,6 @@ export async function onRequestPost(context) {
     let clienteId;
     if (cliente) {
       clienteId = cliente.id;
-      // Actualizar RUT si se proporcionó
       if (data.rut) {
         await env.DB.prepare(
           "UPDATE Clientes SET rut = ? WHERE id = ?"
@@ -60,7 +59,6 @@ export async function onRequestPost(context) {
     let vehiculoId;
     if (vehiculo) {
       vehiculoId = vehiculo.id;
-      // Actualizar datos del vehículo
       await env.DB.prepare(`
         UPDATE Vehiculos 
         SET marca = ?, modelo = ?, anio = ?, cilindrada = ?, 
@@ -94,7 +92,7 @@ export async function onRequestPost(context) {
       vehiculoId = result.meta.last_row_id;
     }
     
-    // Insertar orden de trabajo
+    // Insertar orden de trabajo - 36 valores exactos
     await env.DB.prepare(`
       INSERT INTO OrdenesTrabajo (
         numero_orden, token, cliente_id, vehiculo_id, patente_placa,
@@ -110,42 +108,44 @@ export async function onRequestPost(context) {
         check_puerta_trasera_der, check_paragolfe_trasero_izq, check_otros_carroceria,
         monto_total, monto_abono, monto_restante, metodo_pago,
         estado, fecha_creacion
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Enviada', datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      nuevoNumero,
-      token,
-      clienteId,
-      vehiculoId,
-      data.patente,
-      data.fecha_ingreso,
-      data.hora_ingreso || null,
-      data.recepcionista || null,
-      data.marca || null,
-      data.modelo || null,
-      data.anio || null,
-      data.cilindrada || null,
-      data.combustible || null,
-      data.kilometraje || null,
-      data.trabajo_frenos || 0,
-      data.detalle_frenos || null,
-      data.trabajo_luces || 0,
-      data.detalle_luces || null,
-      data.trabajo_tren_delantero || 0,
-      data.detalle_tren_delantero || null,
-      data.trabajo_correas || 0,
-      data.detalle_correas || null,
-      data.trabajo_componentes || 0,
-      data.detalle_componentes || null,
-      data.nivel_combustible || null,
-      data.check_paragolfe_delantero_der || 0,
-      data.check_puerta_delantera_der || 0,
-      data.check_puerta_trasera_der || 0,
-      data.check_paragolfe_trasero_izq || 0,
-      data.check_otros_carroceria || null,
-      data.monto_total || 0,
-      data.monto_abono || 0,
-      data.monto_restante || 0,
-      data.metodo_pago || null
+      nuevoNumero,                              // 1
+      token,                                    // 2
+      clienteId,                                // 3
+      vehiculoId,                               // 4
+      data.patente,                             // 5
+      data.fecha_ingreso,                       // 6
+      data.hora_ingreso || null,                // 7
+      data.recepcionista || null,               // 8
+      data.marca || null,                       // 9
+      data.modelo || null,                      // 10
+      data.anio || null,                        // 11
+      data.cilindrada || null,                  // 12
+      data.combustible || null,                 // 13
+      data.kilometraje || null,                 // 14
+      data.trabajo_frenos || 0,                 // 15
+      data.detalle_frenos || null,              // 16
+      data.trabajo_luces || 0,                  // 17
+      data.detalle_luces || null,               // 18
+      data.trabajo_tren_delantero || 0,         // 19
+      data.detalle_tren_delantero || null,      // 20
+      data.trabajo_correas || 0,               // 21
+      data.detalle_correas || null,            // 22
+      data.trabajo_componentes || 0,           // 23
+      data.detalle_componentes || null,        // 24
+      data.nivel_combustible || null,           // 25
+      data.check_paragolfe_delantero_der || 0,  // 26
+      data.check_puerta_delantera_der || 0,    // 27
+      data.check_puerta_trasera_der || 0,      // 28
+      data.check_paragolfe_trasero_izq || 0,   // 29
+      data.check_otros_carroceria || null,     // 30
+      data.monto_total || 0,                   // 31
+      data.monto_abono || 0,                   // 32
+      data.monto_restante || 0,                // 33
+      data.metodo_pago || null,                // 34
+      'Enviada',                               // 35
+      'datetime("now")'                        // 36
     ).run();
     
     // Actualizar número de orden en configuración
