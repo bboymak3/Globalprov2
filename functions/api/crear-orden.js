@@ -92,7 +92,7 @@ export async function onRequestPost(context) {
       vehiculoId = result.meta.last_row_id;
     }
     
-    // Insertar orden de trabajo - 36 valores exactos
+    // Insertar orden de trabajo - 35 valores exactos
     await env.DB.prepare(`
       INSERT INTO OrdenesTrabajo (
         numero_orden, token, cliente_id, vehiculo_id, patente_placa,
@@ -107,8 +107,8 @@ export async function onRequestPost(context) {
         check_paragolfe_delantero_der, check_puerta_delantera_der,
         check_puerta_trasera_der, check_paragolfe_trasero_izq, check_otros_carroceria,
         monto_total, monto_abono, monto_restante, metodo_pago,
-        estado, fecha_creacion
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        estado
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       nuevoNumero,                              // 1
       token,                                    // 2
@@ -144,8 +144,7 @@ export async function onRequestPost(context) {
       data.monto_abono || 0,                   // 32
       data.monto_restante || 0,                // 33
       data.metodo_pago || null,                // 34
-      'Enviada',                               // 35
-      'datetime("now")'                        // 36
+      'Enviada'                                // 35
     ).run();
     
     // Actualizar número de orden en configuración
