@@ -24,14 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================
 
 function mostrarSeccion(seccion) {
-    // Ocultar todas las secciones
     document.getElementById('seccion-crear').style.display = 'none';
     document.getElementById('seccion-buscar').style.display = 'none';
-    
-    // Mostrar la sección seleccionada
     document.getElementById('seccion-' + seccion).style.display = 'block';
     
-    // Actualizar nav
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
     event.target.classList.add('active');
 }
@@ -51,8 +47,7 @@ function toggleDetalle(trabajo) {
 
 function toggleAbono() {
     const tieneAbono = document.getElementById('tiene-abono').checked;
-    const seccionAbono = document.getElementById('seccion-abono');
-    seccionAbono.style.display = tieneAbono ? 'block' : 'none';
+    document.getElementById('seccion-abono').style.display = tieneAbono ? 'block' : 'none';
     
     if (!tieneAbono) {
         document.getElementById('monto-abono').value = '';
@@ -68,7 +63,6 @@ function calcularRestante() {
     const abono = tieneAbono ? (parseFloat(document.getElementById('monto-abono').value) || 0) : 0;
     const restante = total - abono;
     
-    // Actualizar resumen
     document.getElementById('resumen-total').textContent = '$' + total.toLocaleString('es-CL');
     document.getElementById('resumen-abono').textContent = '$' + abono.toLocaleString('es-CL');
     document.getElementById('resumen-restante').textContent = '$' + restante.toLocaleString('es-CL');
@@ -86,7 +80,6 @@ async function buscarVehiculoPorPatente(patente) {
         const data = await response.json();
         
         if (data.vehiculo) {
-            // Autocompletar datos del vehículo
             document.getElementById('marca').value = data.vehiculo.marca || '';
             document.getElementById('modelo').value = data.vehiculo.modelo || '';
             document.getElementById('anio').value = data.vehiculo.anio || '';
@@ -94,7 +87,6 @@ async function buscarVehiculoPorPatente(patente) {
             document.getElementById('combustible').value = data.vehiculo.combustible || '';
             document.getElementById('kilometraje').value = data.vehiculo.kilometraje || '';
             
-            // Si hay cliente asociado
             if (data.cliente) {
                 document.getElementById('cliente').value = data.cliente.nombre || '';
                 document.getElementById('rut').value = data.cliente.rut || '';
@@ -127,7 +119,7 @@ async function cargarProximoNumeroOrden() {
 }
 
 // ============================================
-// GUARDAR ORDEN
+// GUARDAR ORDEN - ENVIANDO 35 VALORES
 // ============================================
 
 async function guardarOrden() {
@@ -138,7 +130,7 @@ async function guardarOrden() {
         return;
     }
     
-    // Recopilar datos - SOLO 36 VALORES para la base de datos
+    // Recopilar datos - 35 VALORES EXACTOS
     const ordenData = {
         patente: document.getElementById('patente').value.toUpperCase(),
         marca: document.getElementById('marca').value,
@@ -180,16 +172,17 @@ async function guardarOrden() {
         check_paragolfe_trasero_izq: document.getElementById('check-paragolfe-tra-izq').checked ? 1 : 0,
         check_otros_carroceria: document.getElementById('check-otros').value,
         
-        // Montos
+        // Montos - ORDEN IMPORTANTE: monto_restante después de metodo_pago
         monto_total: parseFloat(document.getElementById('monto-total').value) || 0,
         monto_abono: document.getElementById('tiene-abono').checked ? (parseFloat(document.getElementById('monto-abono').value) || 0) : 0,
-        metodo_pago: document.getElementById('tiene-abono').checked ? document.getElementById('metodo-pago').value : null
+        metodo_pago: document.getElementById('tiene-abono').checked ? document.getElementById('metodo-pago').value : null,
+        monto_restante: 0  // Se calculará después
     };
     
-    // Calcular restante localmente
+    // Calcular restante
     ordenData.monto_restante = ordenData.monto_total - ordenData.monto_abono;
     
-    // VERIFICACIÓN: Contar cuántos valores se envían
+    // VERIFICACIÓN: Debe decir 35 valores
     console.log('Valores a enviar:', Object.keys(ordenData).length);
     console.log('Valores:', Object.keys(ordenData));
     
@@ -209,7 +202,6 @@ async function guardarOrden() {
         if (data.success) {
             mostrarNotificacion('success', 'Orden Creada', `Orden #${data.numero_orden} creada exitosamente`);
             
-            // Mostrar link para compartir
             const linkAprobacion = `${window.location.origin}/aprobar?token=${data.token}`;
             
             const modalHtml = `
@@ -243,11 +235,9 @@ async function guardarOrden() {
             const modal = new bootstrap.Modal(document.getElementById('modalVerOrden'));
             modal.show();
             
-            // Limpiar formulario
             form.reset();
             cargarProximoNumeroOrden();
             
-            // Establecer fecha y hora actual
             const ahora = new Date();
             document.getElementById('fecha-ingreso').value = ahora.toISOString().split('T')[0];
             document.getElementById('hora-ingreso').value = ahora.toTimeString().slice(0, 5);
@@ -342,7 +332,6 @@ function mostrarResultados(ordenes) {
 }
 
 function filtrarOrdenes(estado) {
-    // Actualizar botones de filtro
     document.querySelectorAll('.filtro-btn').forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
     
@@ -381,7 +370,6 @@ function mostrarOrdenEnModal(orden) {
     const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
     const estadoClass = obtenerClaseEstado(orden.estado);
     
-    // Construir HTML de trabajos
     let trabajosHtml = '';
     if (orden.trabajo_frenos) trabajosHtml += `<li><strong>Frenos:</strong> ${orden.detalle_frenos || 'Sin detalle'}</li>`;
     if (orden.trabajo_luces) trabajosHtml += `<li><strong>Luces:</strong> ${orden.detalle_luces || 'Sin detalle'}</li>`;
@@ -391,7 +379,6 @@ function mostrarOrdenEnModal(orden) {
     
     if (!trabajosHtml) trabajosHtml = '<li>No hay trabajos seleccionados</li>';
     
-    // Construir HTML de checklist
     let checklistHtml = `
         <p><strong>Nivel de Combustible:</strong> ${orden.nivel_combustible || 'No registrado'}</p>
         <p><strong>Estado de Carrocería:</strong></p>
@@ -404,7 +391,6 @@ function mostrarOrdenEnModal(orden) {
         </ul>
     `;
     
-    // Firma
     let firmaHtml = '';
     if (orden.firma_imagen) {
         firmaHtml = `
@@ -541,7 +527,6 @@ async function generarPDF(orden) {
     const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
     let yPos = 20;
     
-    // Título
     doc.setFontSize(20);
     doc.setTextColor(168, 0, 0);
     doc.text('ORDEN DE TRABAJO', 105, yPos, { align: 'center' });
@@ -554,7 +539,6 @@ async function generarPDF(orden) {
     doc.text('GLOBAL PRO AUTOMOTRIZ', 105, yPos, { align: 'center' });
     yPos += 20;
     
-    // Información del Taller
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
@@ -568,7 +552,6 @@ async function generarPDF(orden) {
     doc.text('Contactos: +56 9 8471 5405 / +56 9 3902 6185', 25, yPos); yPos += 6;
     doc.text('RRSS: @globalproautomotriz', 25, yPos); yPos += 15;
     
-    // Datos del Cliente
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
     doc.text('2. DATOS DEL CLIENTE', 20, yPos);
@@ -582,7 +565,6 @@ async function generarPDF(orden) {
     doc.text(`Fecha Ingreso: ${orden.fecha_ingreso || 'N/A'} ${orden.hora_ingreso || ''}`, 25, yPos); yPos += 6;
     doc.text(`Recepcionista: ${orden.recepcionista || 'N/A'}`, 25, yPos); yPos += 15;
     
-    // Datos del Vehículo
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
     doc.text('3. DATOS DEL VEHÍCULO', 20, yPos);
@@ -596,7 +578,6 @@ async function generarPDF(orden) {
     doc.text(`Combustible: ${orden.combustible || 'N/A'}`, 25, yPos); yPos += 6;
     doc.text(`Kilometraje: ${orden.kilometraje || 'N/A'}`, 25, yPos); yPos += 15;
     
-    // Trabajos
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
     doc.text('4. TRABAJOS A REALIZAR', 20, yPos);
@@ -627,7 +608,6 @@ async function generarPDF(orden) {
     }
     yPos += 10;
     
-    // Checklist
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
     doc.text('5. CHECKLIST DEL VEHÍCULO', 20, yPos);
@@ -644,7 +624,6 @@ async function generarPDF(orden) {
     if (orden.check_otros_carroceria) { doc.text(`  ${orden.check_otros_carroceria}`, 25, yPos); yPos += 5; }
     yPos += 10;
     
-    // Valores
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
     doc.text('6. VALORES', 20, yPos);
@@ -660,7 +639,6 @@ async function generarPDF(orden) {
     }
     yPos += 10;
     
-    // Estado y Firma
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
     doc.text('7. ESTADO Y FIRMA', 20, yPos);
@@ -673,7 +651,6 @@ async function generarPDF(orden) {
         doc.text(`Fecha de Aprobación: ${orden.fecha_aprobacion}`, 25, yPos); yPos += 6;
     }
     
-    // Agregar imagen de firma si existe
     if (orden.firma_imagen) {
         try {
             doc.text('Firma del Cliente:', 25, yPos); yPos += 6;
@@ -685,7 +662,6 @@ async function generarPDF(orden) {
         }
     }
     
-    // Validez
     yPos += 10;
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
@@ -698,12 +674,10 @@ async function generarPDF(orden) {
     doc.text('• Se autorizan pruebas de carretera necesarias', 25, yPos); yPos += 5;
     doc.text('• La empresa no se hace responsable por objetos no declarados', 25, yPos); yPos += 5;
     
-    // Footer
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
     doc.text(`Generado: ${new Date().toLocaleString('es-CL')}`, 105, 285, { align: 'center' });
     
-    // Guardar
     doc.save(`OT-${numeroFormateado}-${orden.patente_placa.replace(/\s/g, '')}.pdf`);
     
     mostrarNotificacion('success', 'PDF Generado', 'El PDF se ha descargado exitosamente');
@@ -736,7 +710,6 @@ function copiarLink(link) {
     navigator.clipboard.writeText(link).then(() => {
         mostrarNotificacion('success', 'Link Copiado', 'El link ha sido copiado al portapapeles');
     }).catch(() => {
-        // Fallback para navegadores antiguos
         const input = document.createElement('input');
         input.value = link;
         document.body.appendChild(input);
@@ -787,7 +760,6 @@ function mostrarNotificacion(tipo, titulo, mensaje) {
     toastTitle.textContent = titulo;
     toastBody.textContent = mensaje;
     
-    // Configurar colores según tipo
     toastHeader.className = 'toast-header';
     switch (tipo) {
         case 'success':
