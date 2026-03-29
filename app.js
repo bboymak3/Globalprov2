@@ -138,7 +138,7 @@ async function guardarOrden() {
         return;
     }
     
-    // Recopilar datos
+    // Recopilar datos - SOLO 36 VALORES para la base de datos
     const ordenData = {
         patente: document.getElementById('patente').value.toUpperCase(),
         marca: document.getElementById('marca').value,
@@ -155,7 +155,7 @@ async function guardarOrden() {
         hora_ingreso: document.getElementById('hora-ingreso').value,
         recepcionista: document.getElementById('recepcionista').value,
         
-        // Trabajos
+        // Trabajos (5 categorías)
         trabajo_frenos: document.getElementById('check-frenos').checked ? 1 : 0,
         detalle_frenos: document.getElementById('detalle-frenos').value,
         
@@ -182,13 +182,16 @@ async function guardarOrden() {
         
         // Montos
         monto_total: parseFloat(document.getElementById('monto-total').value) || 0,
-        tiene_abono: document.getElementById('tiene-abono').checked ? 1 : 0,
         monto_abono: document.getElementById('tiene-abono').checked ? (parseFloat(document.getElementById('monto-abono').value) || 0) : 0,
         metodo_pago: document.getElementById('tiene-abono').checked ? document.getElementById('metodo-pago').value : null
     };
     
-    // Calcular restante
+    // Calcular restante localmente
     ordenData.monto_restante = ordenData.monto_total - ordenData.monto_abono;
+    
+    // VERIFICACIÓN: Contar cuántos valores se envían
+    console.log('Valores a enviar:', Object.keys(ordenData).length);
+    console.log('Valores:', Object.keys(ordenData));
     
     try {
         mostrarLoading(true);
