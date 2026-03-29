@@ -358,13 +358,18 @@ function filtrarOrdenes(estado) {
 async function verOrden(ordenId) {
     try {
         mostrarLoading(true);
-        
+
         const response = await fetch(`${API_BASE}/ver-orden?id=${ordenId}`);
         const data = await response.json();
-        
+
         if (data.orden) {
             ordenActual = data.orden;
-            mostrarOrdenEnModal(data.orden);
+
+            // Cargar historial de pagos
+            const pagos = await cargarPagosOrden(ordenId);
+
+            // Mostrar orden con pagos
+            mostrarOrdenConPagos(data.orden, pagos);
         }
     } catch (error) {
         console.error('Error al ver orden:', error);
@@ -802,4 +807,308 @@ function mostrarNotificacion(tipo, titulo, mensaje) {
     
     const bsToast = new bootstrap.Toast(toast);
     bsToast.show();
+}
+
+// ============================================
+// SISTEMA DE PAGOS PARCIALES
+// ============================================
+
+async function cargarPagosOrden(ordenId) {
+    try {
+        const response = await fetch(`${API_BASE}/registrar-pago?orden_id=${ordenId}`);
+        const data = await response.json();
+
+        if (data.success && data.pagos) {
+            return data.pagos;
+        }
+        return [];
+    } catch (error) {
+        console.error('Error al cargar pagos:', error);
+        return [];
+    }
+}
+
+async function abrirModalRegistrarPago() {
+    if (!ordenActual) {
+        mostrarNotificacion('error', 'Error', 'No hay orden seleccionada');
+        return;
+    }
+
+    const montoRestante = ordenActual.monto_restante || 0;
+
+    const modalHtml = `
+        <div class="text-center">
+            <h5 class="mb-4"><i class="fas fa-money-bill-wave me-2 text-success"></i>Registrar Pago Parcial</h5>
+
+            <div class="alert alert-info">
+                <p class="mb-1"><strong>Orden:</strong> #${String(ordenActual.numero_orden).padStart(6, '0')}</p>
+                <p class="mb-1"><strong>Total:</strong> $${(ordenActual.monto_total || 0).toLocaleString('es-CL')}</p>
+                <p class="mb-1"><strong>Ya abonado:</strong> $${(ordenActual.monto_abono || 0).toLocaleString('es-CL')}</p>
+                <p class="mb-0"><strong>Restante:</strong> <span class="text-primary fw-bold">$${montoRestante.toLocaleString('es-CL')}</span></p>
+            </div>
+
+            <form id="form-pago">
+                <div class="mb-3">
+                    <label class="form-label text-start w-100">Monto a Pagar ($)</label>
+                    <input type="number" class="form-control form-control-lg" id="pago-monto"
+                           min="1" max="${montoRestante}" step="100" required
+                           placeholder="Ingrese el monto">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-start w-100">Método de Pago</label>
+                    <select class="form-select" id="pago-metodo" required>
+                        <option value="">Seleccione...</option>
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Transferencia">Transferencia Bancaria</option>
+                        <option value="Tarjeta">Tarjeta de Crédito/Débito</option>
+                        <option value="Webpay">Webpay</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-start w-100">Observaciones (Opcional)</label>
+                    <textarea class="form-control" id="pago-observaciones" rows="2"
+                              placeholder="Detalle del pago..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-start w-100">Registrador</label>
+                    <input type="text" class="form-control" id="pago-registrador"
+                           placeholder="Nombre del técnico/recepcionista">
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-check me-2"></i>Registrar Pago
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    // Insertar el HTML en el modal existente
+    document.getElementById('modal-contenido').innerHTML = modalHtml;
+    document.getElementById('modal-numero-orden').textContent = String(ordenActual.numero_orden).padStart(6, '0');
+
+    // Mostrar el modal
+    const modal = new bootstrap.Modal(document.getElementById('modalVerOrden'));
+    modal.show();
+
+    // Agregar event listener al formulario
+    document.getElementById('form-pago').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await registrarPagoParcial(ordenActual.id);
+    });
+}
+
+async function registrarPagoParcial(ordenId) {
+    const monto = parseFloat(document.getElementById('pago-monto').value);
+    const metodoPago = document.getElementById('pago-metodo').value;
+    const observaciones = document.getElementById('pago-observaciones').value;
+    const registrador = document.getElementById('pago-registrador').value;
+
+    if (!monto || !metodoPago) {
+        mostrarNotificacion('warning', 'Advertencia', 'Complete el monto y método de pago');
+        return;
+    }
+
+    try {
+        mostrarLoading(true);
+
+        const response = await fetch(`${API_BASE}/registrar-pago`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                orden_id: ordenId,
+                monto: monto,
+                metodo_pago: metodoPago,
+                observaciones: observaciones || null,
+                registrador: registrador || null
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarNotificacion('success', 'Pago Registrado', data.mensaje);
+
+            // Actualizar orden actual
+            ordenActual = data.orden;
+
+            // Cerrar el modal actual y mostrar la orden actualizada
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalVerOrden'));
+            modal.hide();
+
+            setTimeout(() => {
+                mostrarOrdenConPagos(data.orden, data.historial_pagos);
+            }, 300);
+
+        } else {
+            mostrarNotificacion('error', 'Error', data.error || 'Error al registrar pago');
+        }
+    } catch (error) {
+        console.error('Error al registrar pago:', error);
+        mostrarNotificacion('error', 'Error', 'Error de conexión');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+async function mostrarOrdenConPagos(orden, pagos) {
+    ordenActual = orden;
+    const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
+    const estadoClass = obtenerClaseEstado(orden.estado);
+
+    // Construir HTML de trabajos
+    let trabajosHtml = '';
+    if (orden.trabajo_frenos) trabajosHtml += `<li><strong>Frenos:</strong> ${orden.detalle_frenos || 'Sin detalle'}</li>`;
+    if (orden.trabajo_luces) trabajosHtml += `<li><strong>Luces:</strong> ${orden.detalle_luces || 'Sin detalle'}</li>`;
+    if (orden.trabajo_tren_delantero) trabajosHtml += `<li><strong>Tren Delantero:</strong> ${orden.detalle_tren_delantero || 'Sin detalle'}</li>`;
+    if (orden.trabajo_correas) trabajosHtml += `<li><strong>Correas:</strong> ${orden.detalle_correas || 'Sin detalle'}</li>`;
+    if (orden.trabajo_componentes) trabajosHtml += `<li><strong>Componentes:</strong> ${orden.detalle_componentes || 'Sin detalle'}</li>`;
+
+    if (!trabajosHtml) trabajosHtml = '<li>No hay trabajos seleccionados</li>';
+
+    // Construir HTML de pagos
+    let pagosHtml = '';
+    if (pagos && pagos.length > 0) {
+        pagos.forEach(pago => {
+            pagosHtml += `
+                <div class="card mb-2">
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>$${pago.monto.toLocaleString('es-CL')}</strong>
+                                <span class="badge bg-secondary ms-2">${pago.metodo_pago}</span>
+                                ${pago.registrador ? `<small class="text-muted d-block">por: ${pago.registrador}</small>` : ''}
+                            </div>
+                            <small class="text-muted">${new Date(pago.fecha_pago).toLocaleString('es-CL')}</small>
+                        </div>
+                        ${pago.observaciones ? `<small class="text-muted d-block mt-1">${pago.observaciones}</small>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        pagosHtml = '<p class="text-muted text-center">No hay pagos registrados</p>';
+    }
+
+    // Firma
+    let firmaHtml = '';
+    if (orden.firma_imagen) {
+        firmaHtml = `
+            <div class="text-center mt-4">
+                <h6><i class="fas fa-signature me-2"></i>Firma del Cliente</h6>
+                <img src="${orden.firma_imagen}" alt="Firma del cliente" style="max-width: 300px; border: 1px solid #ddd; border-radius: 5px;">
+                <p class="small text-muted mt-2">Fecha de aprobación: ${orden.fecha_aprobacion || 'N/A'}</p>
+            </div>
+        `;
+    } else {
+        firmaHtml = `
+            <div class="alert alert-warning mt-4">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Esta orden aún no ha sido firmada por el cliente.
+            </div>
+        `;
+    }
+
+    const html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="fw-bold"><i class="fas fa-building me-2"></i>INFORMACIÓN DEL TALLER</h6>
+                <p><strong>Empresa:</strong> Global Pro Automotriz</p>
+                <p><strong>Dirección:</strong> Padre Alberto Hurtado 3596, Pedro Aguirre Cerda</p>
+                <p><strong>Contactos:</strong> +56 9 8471 5405 / +56 9 3902 6185</p>
+
+                <hr>
+
+                <h6 class="fw-bold"><i class="fas fa-user me-2"></i>DATOS DEL CLIENTE</h6>
+                <p><strong>Nombre:</strong> ${orden.cliente_nombre || 'N/A'}</p>
+                <p><strong>R.U.T.:</strong> ${orden.cliente_rut || 'N/A'}</p>
+                <p><strong>Teléfono:</strong> ${orden.cliente_telefono || 'N/A'}</p>
+            </div>
+
+            <div class="col-md-6">
+                <h6 class="fw-bold"><i class="fas fa-car me-2"></i>DATOS DEL VEHÍCULO</h6>
+                <p><strong>Patente:</strong> <span style="font-size: 1.2rem; font-weight: bold; color: var(--gp-red);">${orden.patente_placa}</span></p>
+                <p><strong>Marca/Modelo:</strong> ${orden.marca || 'N/A'} ${orden.modelo || ''} (${orden.anio || 'N/A'})</p>
+
+                <hr>
+
+                <h6 class="fw-bold"><i class="fas fa-info-circle me-2"></i>ESTADO DE LA ORDEN</h6>
+                <p><span class="badge ${estadoClass} fs-6">${orden.estado}</span></p>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="fw-bold"><i class="fas fa-dollar-sign me-2"></i>VALORES</h6>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted">Total</small>
+                            <div class="h4">$${(orden.monto_total || 0).toLocaleString('es-CL')}</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 bg-success bg-opacity-10 rounded">
+                            <small class="text-muted">Pagado</small>
+                            <div class="h4 text-success">$${(orden.monto_abono || 0).toLocaleString('es-CL')}</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 ${orden.monto_restante <= 0 ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10'} rounded">
+                            <small class="text-muted">Restante</small>
+                            <div class="h4 ${orden.monto_restante <= 0 ? 'text-success' : 'text-warning'}">$${(orden.monto_restante || 0).toLocaleString('es-CL')}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <h6 class="fw-bold"><i class="fas fa-money-bill-wave me-2"></i>HISTORIAL DE PAGOS</h6>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    ${pagosHtml}
+                </div>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="text-center">
+            ${orden.monto_restante > 0 ? `
+                <button onclick="abrirModalRegistrarPago()" class="btn btn-success btn-lg me-2">
+                    <i class="fas fa-plus me-2"></i>Registrar Pago
+                </button>
+            ` : `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>¡Pago Completado!</strong>
+                </div>
+            `}
+            <button onclick="generarPDFDesdeModal()" class="btn btn-primary btn-lg">
+                <i class="fas fa-file-pdf me-2"></i>Descargar PDF
+            </button>
+            <button class="btn btn-secondary btn-lg" data-bs-dismiss="modal">
+                <i class="fas fa-times me-2"></i>Cerrar
+            </button>
+        </div>
+
+        ${firmaHtml}
+    `;
+
+    document.getElementById('modal-contenido').innerHTML = html;
+    document.getElementById('modal-numero-orden').textContent = numeroFormateado;
+
+    const modal = new bootstrap.Modal(document.getElementById('modalVerOrden'));
+    modal.show();
 }
