@@ -1,571 +1,649 @@
-// ============================================
-// PÁGINA DE APROBACIÓN DE ORDEN
-// Global Pro Automotriz
-// Cliente firma y aprueba la orden
-// ============================================
-
-export async function onRequestGet(context) {
-  const { request, env } = context;
-  const url = new URL(request.url);
-  const token = url.searchParams.get('token');
-  
-  if (!token) {
-    return new Response('Enlace inválido. No se proporcionó token.', { status: 400 });
-  }
-  
-  // Obtener orden
-  const orden = await env.DB.prepare(`
-    SELECT 
-      o.*,
-      c.nombre as cliente_nombre,
-      c.rut as cliente_rut,
-      c.telefono as cliente_telefono
-    FROM OrdenesTrabajo o
-    LEFT JOIN Clientes c ON o.cliente_id = c.id
-    WHERE o.token = ?
-  `).bind(token).first();
-  
-  if (!orden) {
-    return new Response(`
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Orden No Encontrada - Global Pro</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-      </head>
-      <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-xl shadow-lg p-8 text-center max-w-md">
-          <div class="text-6xl mb-4">❌</div>
-          <h1 class="text-2xl font-bold text-gray-800 mb-2">Orden No Encontrada</h1>
-          <p class="text-gray-600">El enlace de la orden no es válido o ha expirado.</p>
-          <p class="text-sm text-gray-500 mt-4">Contacte al taller para más información.</p>
-        </div>
-      </body>
-      </html>
-    `, {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
-      status: 404
-    });
-  }
-  
-  // Si ya está aprobada
-  if (orden.estado === 'Aprobada') {
-    return new Response(generarHTMLAprobada(orden), {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' }
-    });
-  }
-  
-  // Si ya está cancelada
-  if (orden.estado === 'Cancelada') {
-    return new Response(generarHTMLCancelada(orden), {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' }
-    });
-  }
-  
-  // Generar HTML de aprobación
-  return new Response(generarHTMLAprobacion(orden), {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' }
-  });
-}
-
-// ============================================
-// GENERAR HTML DE APROBACIÓN
-// ============================================
-
-function generarHTMLAprobacion(orden) {
-  const numeroOrden = String(orden.numero_orden).padStart(6, '0');
-  const fecha = orden.fecha_ingreso || 'N/A';
-  const hora = orden.hora_ingreso || '';
-  const tecnico = orden.recepcionista || 'No especificado';
-  const total = (orden.monto_total || 0).toLocaleString('es-CL');
-  const abono = (orden.monto_abono || 0).toLocaleString('es-CL');
-  const restante = (orden.monto_restante || 0).toLocaleString('es-CL');
-  const nombreCliente = orden.cliente_nombre || 'Cliente';
-  
-  // Construir lista de trabajos seleccionados
-  let trabajosHtml = '';
-  if (orden.trabajo_frenos) trabajosHtml += `<li class="flex items-start"><span class="text-green-500 mr-2">✓</span><span><strong>Frenos:</strong> ${orden.detalle_frenos || 'Sin detalle'}</span></li>`;
-  if (orden.trabajo_luces) trabajosHtml += `<li class="flex items-start"><span class="text-green-500 mr-2">✓</span><span><strong>Luces:</strong> ${orden.detalle_luces || 'Sin detalle'}</span></li>`;
-  if (orden.trabajo_tren_delantero) trabajosHtml += `<li class="flex items-start"><span class="text-green-500 mr-2">✓</span><span><strong>Tren Delantero:</strong> ${orden.detalle_tren_delantero || 'Sin detalle'}</span></li>`;
-  if (orden.trabajo_correas) trabajosHtml += `<li class="flex items-start"><span class="text-green-500 mr-2">✓</span><span><strong>Correas:</strong> ${orden.detalle_correas || 'Sin detalle'}</span></li>`;
-  if (orden.trabajo_componentes) trabajosHtml += `<li class="flex items-start"><span class="text-green-500 mr-2">✓</span><span><strong>Componentes:</strong> ${orden.detalle_componentes || 'Sin detalle'}</span></li>`;
-  
-  if (!trabajosHtml) trabajosHtml = '<li class="text-gray-500">No hay trabajos seleccionados</li>';
-  
-  return `<!DOCTYPE html>
-<html lang="es">
+<!DOCTYPE html>
+<html lang="es-CL">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aprobar Orden #${numeroOrden} - Global Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Pro Automotriz - Panel de Órdenes de Trabajo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --gp-red: #a80000;
+            --gp-orange: #ff6b00;
+            --gp-green: #28a745;
+            --gp-dark: #121212;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background-color: #f5f5f5;
         }
-        
-        #sig-canvas {
-            touch-action: none;
-            background: white;
-            border-radius: 10px;
-            cursor: crosshair;
+
+        .navbar {
+            background-color: var(--gp-dark) !important;
+            border-bottom: 3px solid var(--gp-red);
         }
-        
-        .signature-container {
-            position: relative;
-        }
-        
-        .btn-clear {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 50;
-            background: white;
-            border: 2px solid #ef4444;
-            color: #ef4444;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 12px;
+
+        .navbar-brand {
+            color: white !important;
             font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
-        
-        .work-item {
-            background: #f8f9fa;
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-placeholder {
+            width: 50px;
+            height: 50px;
+            background-color: var(--gp-red);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background-color: var(--gp-red);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background-color: var(--gp-red);
+            border-color: var(--gp-red);
+        }
+
+        .btn-primary:hover {
+            background-color: #800000;
+            border-color: #800000;
+        }
+
+        .patente-input {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            border: 3px solid var(--gp-red);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .patente-input:focus {
+            border-color: var(--gp-orange);
+            box-shadow: 0 0 10px rgba(255, 107, 0, 0.3);
+        }
+
+        .numero-orden {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--gp-red);
+            text-align: center;
+            background: linear-gradient(135deg, #fff 0%, #f8f8f8 100%);
+            border: 3px solid var(--gp-red);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Estados de orden */
+        .estado-enviada {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffc107;
+        }
+
+        .estado-aprobada {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+        .estado-cancelada {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .orden-card {
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .orden-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .filtro-btn {
+            border-radius: 20px;
+            padding: 8px 20px;
+            margin: 5px;
+            font-weight: 500;
+        }
+
+        .filtro-btn.active {
+            background-color: var(--gp-red);
+            color: white;
+            border-color: var(--gp-red);
+        }
+
+        .trabajo-item {
+            background-color: #f8f9fa;
             padding: 10px;
             border-radius: 8px;
-            margin-bottom: 8px;
-            border-left: 4px solid #a80000;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--gp-red);
+        }
+
+        .resumen-pagos {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .checklist-item {
+            padding: 8px 12px;
+            border-radius: 8px;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            margin-bottom: 5px;
+        }
+
+        .checklist-item.checked {
+            background-color: #d4edda;
+            border-color: #28a745;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .patente-input {
+                font-size: 1.5rem;
+            }
+
+            .numero-orden {
+                font-size: 1.8rem;
+            }
         }
     </style>
 </head>
-<body class="p-4">
-    <div class="max-w-2xl mx-auto">
-        <!-- Header -->
-        <div class="bg-white rounded-t-2xl shadow-2xl overflow-hidden">
-            <div class="bg-gradient-to-r from-red-800 to-red-600 p-4 text-center">
-                <h1 class="text-white text-2xl font-black">GLOBAL PRO AUTOMOTRIZ</h1>
-                <p class="text-red-200 text-sm">ORDEN DE TRABAJO #${numeroOrden}</p>
-            </div>
-        </div>
-        
-        <!-- Contenido Principal -->
-        <div class="bg-white shadow-2xl p-4 md:p-6">
-            <!-- Mensaje Personalizado -->
-            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
-                <p class="text-blue-800">
-                    <strong>Estimado/a ${nombreCliente}:</strong>
-                </p>
-                <p class="text-blue-700 mt-2">
-                    Ha recibido una <strong>ORDEN DE TRABAJO</strong> de parte de 
-                    <strong>GLOBAL PRO AUTOMOTRIZ</strong>
-                </p>
-            </div>
-            
-            <!-- Información de la Orden -->
-            <div class="bg-gray-50 rounded-xl p-4 mb-6">
-                <h3 class="font-bold text-lg mb-3 text-gray-800">📋 Información de la Orden</h3>
-                <div class="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                        <span class="text-gray-600">N° Orden:</span>
-                        <p class="font-bold text-red-700">${numeroOrden}</p>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <div class="logo-container">
+                    <div class="logo-placeholder">
+                        <i class="fas fa-wrench"></i>
                     </div>
                     <div>
-                        <span class="text-gray-600">Fecha:</span>
-                        <p class="font-bold">${fecha} ${hora}</p>
-                    </div>
-                    <div>
-                        <span class="text-gray-600">Técnico:</span>
-                        <p class="font-bold">${tecnico}</p>
-                    </div>
-                    <div>
-                        <span class="text-gray-600">Patente:</span>
-                        <p class="font-bold text-red-700">${orden.patente_placa}</p>
+                        <div style="font-size: 1.2rem; font-weight: bold;">GLOBAL PRO</div>
+                        <div style="font-size: 0.8rem;">AUTOMOTRIZ</div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Valores -->
-            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-4 mb-6 text-white">
-                <h3 class="font-bold text-lg mb-3">💰 Valores</h3>
-                <div class="grid grid-cols-3 gap-3 text-center">
-                    <div class="bg-white/20 rounded-lg p-3">
-                        <p class="text-xs opacity-80">Total</p>
-                        <p class="font-bold text-xl">$${total}</p>
-                    </div>
-                    <div class="bg-white/20 rounded-lg p-3">
-                        <p class="text-xs opacity-80">Abono</p>
-                        <p class="font-bold text-xl">$${abono}</p>
-                    </div>
-                    <div class="bg-white/20 rounded-lg p-3">
-                        <p class="text-xs opacity-80">Restante</p>
-                        <p class="font-bold text-xl">$${restante}</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Trabajos Seleccionados -->
-            <div class="mb-6">
-                <h3 class="font-bold text-lg mb-3 text-gray-800">🔧 Trabajos Seleccionados</h3>
-                <ul class="space-y-2 text-sm">
-                    ${trabajosHtml}
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" onclick="mostrarSeccion('crear')">Nueva Orden</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="mostrarSeccion('buscar')">Buscar Órdenes</a>
+                    </li>
                 </ul>
             </div>
-            
-            <!-- Datos del Vehículo -->
-            <div class="bg-gray-50 rounded-xl p-4 mb-6">
-                <h3 class="font-bold text-lg mb-3 text-gray-800">🚗 Datos del Vehículo</h3>
-                <div class="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                        <span class="text-gray-600">Marca/Modelo:</span>
-                        <p class="font-bold">${orden.marca || 'N/A'} ${orden.modelo || ''} (${orden.anio || 'N/A'})</p>
-                    </div>
-                    <div>
-                        <span class="text-gray-600">Patente:</span>
-                        <p class="font-bold text-red-700">${orden.patente_placa}</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Checklist -->
-            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-                <h3 class="font-bold text-lg mb-3 text-gray-800">✅ Checklist del Vehículo</h3>
-                <div class="text-sm">
-                    <p><strong>Nivel de Combustible:</strong> ${orden.nivel_combustible || 'No registrado'}</p>
-                    <p class="mt-2"><strong>Estado de Carrocería:</strong></p>
-                    <ul class="mt-1 ml-4">
-                        ${orden.check_paragolfe_delantero_der ? '<li>✓ Parachoques delantero derecho</li>' : ''}
-                        ${orden.check_puerta_delantera_der ? '<li>✓ Puerta delantera derecha</li>' : ''}
-                        ${orden.check_puerta_trasera_der ? '<li>✓ Puerta trasera derecha</li>' : ''}
-                        ${orden.check_paragolfe_trasero_izq ? '<li>✓ Parachoques trasero izquierdo</li>' : ''}
-                        ${orden.check_otros_carroceria ? `<li>${orden.check_otros_carroceria}</li>` : ''}
-                    </ul>
-                </div>
-            </div>
-            
-            <!-- Área de Firma -->
-            <div class="mb-6">
-                <h3 class="font-bold text-lg mb-3 text-gray-800">✍️ Firma para Aprobar</h3>
-                <div class="signature-container">
-                    <button onclick="limpiarFirma()" class="btn-clear">X Borrar</button>
-                    <canvas id="sig-canvas" height="250"></canvas>
-                </div>
-                <p class="text-sm text-gray-600 mt-2 text-center">
-                    Nombre: <strong>${nombreCliente}</strong> | RUT: <strong>${orden.cliente_rut || 'N/A'}</strong>
-                </p>
-            </div>
-            
-            <!-- Aviso Legal -->
-            <div class="bg-gray-100 rounded-lg p-4 mb-6 text-sm text-gray-700">
-                <p class="mb-2"><strong>Al firmar usted autoriza:</strong></p>
-                <ul class="list-disc list-inside space-y-1">
-                    <li>La intervención del vehículo</li>
-                    <li>Pruebas de carretera necesarias</li>
-                    <li>La empresa no se responsabiliza por objetos no declarados</li>
-                </ul>
-            </div>
-            
-            <!-- Botones de Acción -->
-            <div class="grid grid-cols-2 gap-4">
-                <button onclick="cancelarOrden()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105">
-                    ❌ Cancelar
-                </button>
-                <button onclick="aprobarOrden()" id="btnAprobar" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105">
-                    ✅ Aceptar y Firmar
-                </button>
-            </div>
         </div>
-        
-        <!-- Footer -->
-        <div class="bg-white rounded-b-2xl shadow-2xl p-4 text-center text-sm text-gray-600">
-            <p>Global Pro Automotriz</p>
-            <p class="text-xs">Padre Alberto Hurtado 3596, Pedro Aguirre Cerda</p>
-            <p class="text-xs">+56 9 8471 5405 / +56 9 3902 6185</p>
-        </div>
-    </div>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script>
-        const canvas = document.getElementById('sig-canvas');
-        const ctx = canvas.getContext('2d');
-        let drawing = false;
-        const TOKEN = '${token}';
-        
-        // Ajustar canvas al tamaño del contenedor
-        function resizeCanvas() {
-            const container = canvas.parentElement;
-            const rect = container.getBoundingClientRect();
-            canvas.width = rect.width - 24; // Restar padding
-            canvas.height = 250;
-            
-            ctx.lineWidth = 4;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#000000';
-        }
-        
-        window.onload = resizeCanvas;
-        window.onresize = resizeCanvas;
-        
-        // Funciones de dibujo
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            let clientX = e.clientX;
-            let clientY = e.clientY;
-            
-            if (e.touches && e.touches.length > 0) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            }
-            
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
-        }
-        
-        function startDraw(e) {
-            e.preventDefault();
-            drawing = true;
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-        }
-        
-        function moveDraw(e) {
-            if (!drawing) return;
-            e.preventDefault();
-            const pos = getPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        }
-        
-        function endDraw() {
-            drawing = false;
-            ctx.beginPath();
-        }
-        
-        // Event listeners para mouse
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', moveDraw);
-        canvas.addEventListener('mouseup', endDraw);
-        canvas.addEventListener('mouseout', endDraw);
-        
-        // Event listeners para touch (móvil)
-        canvas.addEventListener('touchstart', startDraw, { passive: false });
-        canvas.addEventListener('touchmove', moveDraw, { passive: false });
-        canvas.addEventListener('touchend', endDraw);
-        
-        function limpiarFirma() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-        
-        async function aprobarOrden() {
-            // Verificar que haya firma
-            const imageData = canvas.toDataURL();
-            
-            // Verificar si el canvas está vacío (simplificado)
-            const blank = document.createElement('canvas');
-            blank.width = canvas.width;
-            blank.height = canvas.height;
-            if (canvas.toDataURL() === blank.toDataURL()) {
-                alert('Por favor, firme antes de aceptar la orden.');
-                return;
-            }
-            
-            const btn = document.getElementById('btnAprobar');
-            btn.innerHTML = 'Procesando...';
-            btn.disabled = true;
-            
-            try {
-                const response = await fetch('/api/aprobar-orden', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        token: TOKEN,
-                        firma: imageData
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Mostrar pantalla de éxito
-                    document.body.innerHTML = generarHTMLExito(data.orden);
-                } else {
-                    alert('Error al aprobar la orden: ' + data.error);
-                    btn.innerHTML = '✅ Aceptar y Firmar';
-                    btn.disabled = false;
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error de conexión. Intente nuevamente.');
-                btn.innerHTML = '✅ Aceptar y Firmar';
-                btn.disabled = false;
-            }
-        }
-        
-        async function cancelarOrden() {
-            const motivo = prompt('¿Cuál es el motivo de la cancelación? (Opcional)');
-            
-            if (confirm('¿Está seguro de cancelar esta orden de trabajo?')) {
-                try {
-                    const response = await fetch('/api/cancelar-orden', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            token: TOKEN,
-                            motivo: motivo
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        document.body.innerHTML = generarHTMLCancelada(data.orden);
-                    } else {
-                        alert('Error al cancelar la orden: ' + data.error);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Error de conexión. Intente nuevamente.');
-                }
-            }
-        }
-        
-        function generarHTMLExito(orden) {
-            const numeroOrden = String(orden.numero_orden).padStart(6, '0');
-            const link = window.location.href;
-            
-            return \`
-                <!DOCTYPE html>
-                <html lang="es">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Orden Aprobada #\${numeroOrden}</title>
-                    <script src="https://cdn.tailwindcss.com"></script>
-                </head>
-                <body class="bg-green-100 flex items-center justify-center min-h-screen p-4">
-                    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-                        <div class="text-8xl mb-4">✅</div>
-                        <h1 class="text-3xl font-black text-green-700 mb-2">¡Orden Aprobada!</h1>
-                        <p class="text-gray-600 mb-6">Su firma ha sido guardada exitosamente.</p>
-                        
-                        <div class="bg-green-50 rounded-xl p-4 mb-6">
-                            <p class="text-sm text-gray-600">Orden N°</p>
-                            <p class="text-2xl font-bold text-green-700">\${numeroOrden}</p>
+    </nav>
+
+    <div class="container mt-4 mb-5">
+        <!-- Sección: Crear Nueva Orden -->
+        <div id="seccion-crear">
+            <div class="row">
+                <div class="col-12 text-center mb-4">
+                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">Nueva Orden de Trabajo</h1>
+                    <p class="text-muted">Complete el formulario para crear una nueva orden de trabajo</p>
+                </div>
+            </div>
+
+            <!-- Número de Orden -->
+            <div class="row justify-content-center mb-4">
+                <div class="col-md-6">
+                    <div class="numero-orden" id="numero-orden-display">
+                        ORDEN DE TRABAJO N° <span id="num-orden">000058</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario Principal -->
+            <form id="form-orden">
+                <!-- Datos del Vehículo (PRIMERA SECCIÓN) -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-car me-2"></i>DATOS DEL VEHÍCULO
+                    </div>
+                    <div class="card-body">
+                        <div class="row justify-content-center mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-center fw-bold" style="font-size: 1.2rem;">
+                                    <i class="fas fa-id-card me-2"></i>PATENTE / PLACA
+                                </label>
+                                <input type="text" class="form-control patente-input" id="patente" 
+                                       placeholder="Ej: GP LT 55" required 
+                                       onkeyup="this.value = this.value.toUpperCase(); buscarVehiculoPorPatente(this.value);">
+                                <div class="text-center mt-2">
+                                    <button type="button" class="btn btn-outline-primary" onclick="buscarVehiculoPorPatente(document.getElementById('patente').value);">
+                                        <i class="fas fa-search me-2"></i>Buscar Vehículo
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <a href="https://wa.me/56939026185?text=\${encodeURIComponent('Hola, he aprobado la orden de trabajo #' + numeroOrden + '. Mi patente es: ' + '${orden.patente_placa}')}" 
-                           target="_blank" 
-                           class="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition">
-                            📱 Enviar Confirmación al Taller
-                        </a>
-                        
-                        <button onclick="descargarPDF()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition">
-                            📥 Descargar PDF
-                        </button>
-                        
-                        <p class="text-sm text-gray-500 mt-4">Será redirigido en 5 segundos...</p>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Marca</label>
+                                <input type="text" class="form-control" id="marca" placeholder="Ej: Chevrolet">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Modelo</label>
+                                <input type="text" class="form-control" id="modelo" placeholder="Ej: Sail">
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label">Año</label>
+                                <input type="number" class="form-control" id="anio" placeholder="2014">
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label">Cilindrada</label>
+                                <input type="text" class="form-control" id="cilindrada" placeholder="1.4">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Combustible</label>
+                                <select class="form-select" id="combustible">
+                                    <option value="">Seleccionar...</option>
+                                    <option value="Bencina">Bencina</option>
+                                    <option value="Diesel">Diesel</option>
+                                    <option value="Eléctrico">Eléctrico</option>
+                                    <option value="Híbrido">Híbrido</option>
+                                    <option value="Gas">Gas (GNV/GLP)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Kilometraje</label>
+                                <input type="number" class="form-control" id="kilometraje" placeholder="Ej: 45000">
+                            </div>
+                        </div>
                     </div>
-                    
-                    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
-                    <script>
-                        setTimeout(() => {
-                            window.location.href = 'https://mecanico247.com/';
-                        }, 5000);
-                        
-                        function descargarPDF() {
-                            // Aquí se generaría el PDF
-                            alert('PDF descargado');
-                        }
-                    <\/script>
-                </body>
-                </html>
-            \`;
-        }
-    </script>
-</body>
-</html>`;
-}
+                </div>
 
-// ============================================
-// GENERAR HTML DE ORDEN APROBADA
-// ============================================
+                <!-- Datos del Cliente -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-user me-2"></i>DATOS DEL CLIENTE
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Cliente <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="cliente" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">R.U.T.</label>
+                                <input type="text" class="form-control" id="rut" placeholder="Ej: 25.391.731-k">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Teléfono <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="telefono" required placeholder="+56 9 1234 5678">
+                            </div>
+                        </div>
 
-function generarHTMLAprobada(orden) {
-  const numeroOrden = String(orden.numero_orden).padStart(6, '0');
-  
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orden Aprobada #${numeroOrden}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-green-100 flex items-center justify-center min-h-screen p-4">
-    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-        <div class="text-8xl mb-4">✅</div>
-        <h1 class="text-3xl font-black text-green-700 mb-2">¡Orden Aprobada!</h1>
-        <p class="text-gray-600 mb-4">Esta orden ya fue aprobada y firmada anteriormente.</p>
-        
-        <div class="bg-green-50 rounded-xl p-4 mb-6">
-            <p class="text-sm text-gray-600">Orden N°</p>
-            <p class="text-2xl font-bold text-green-700">${numeroOrden}</p>
-            <p class="text-xs text-gray-500 mt-2">Fecha de aprobación: ${orden.fecha_aprobacion || 'N/A'}</p>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Fecha de Ingreso</label>
+                                <input type="date" class="form-control" id="fecha-ingreso" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Hora</label>
+                                <input type="time" class="form-control" id="hora-ingreso">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Recepcionista</label>
+                                <input type="text" class="form-control" id="recepcionista" placeholder="Ej: Alberto">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diagnóstico y Trabajos a Realizar -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-tools me-2"></i>DIAGNÓSTICO Y TRABAJOS A REALIZAR
+                    </div>
+                    <div class="card-body">
+                        <!-- Frenos -->
+                        <div class="trabajo-item">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="check-frenos" onchange="toggleDetalle('frenos')">
+                                <label class="form-check-label fw-bold" for="check-frenos">FRENOS</label>
+                            </div>
+                            <textarea class="form-control mt-2" id="detalle-frenos" rows="2" placeholder="Detalle del trabajo en frenos..." disabled></textarea>
+                        </div>
+
+                        <!-- Luces -->
+                        <div class="trabajo-item">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="check-luces" onchange="toggleDetalle('luces')">
+                                <label class="form-check-label fw-bold" for="check-luces">LUCES</label>
+                            </div>
+                            <textarea class="form-control mt-2" id="detalle-luces" rows="2" placeholder="Detalle del trabajo en luces..." disabled></textarea>
+                        </div>
+
+                        <!-- Tren Delantero -->
+                        <div class="trabajo-item">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="check-tren" onchange="toggleDetalle('tren')">
+                                <label class="form-check-label fw-bold" for="check-tren">TREN DELANTERO</label>
+                            </div>
+                            <textarea class="form-control mt-2" id="detalle-tren" rows="2" placeholder="Detalle del trabajo en tren delantero..." disabled></textarea>
+                        </div>
+
+                        <!-- Correas -->
+                        <div class="trabajo-item">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="check-correas" onchange="toggleDetalle('correas')">
+                                <label class="form-check-label fw-bold" for="check-correas">CORREAS</label>
+                            </div>
+                            <textarea class="form-control mt-2" id="detalle-correas" rows="2" placeholder="Detalle del trabajo en correas..." disabled></textarea>
+                        </div>
+
+                        <!-- Componentes -->
+                        <div class="trabajo-item">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="check-componentes" onchange="toggleDetalle('componentes')">
+                                <label class="form-check-label fw-bold" for="check-componentes">COMPONENTES</label>
+                            </div>
+                            <textarea class="form-control mt-2" id="detalle-componentes" rows="2" placeholder="Detalle del trabajo en componentes..." disabled></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Checklist del Vehículo -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-clipboard-check me-2"></i>CHECKLIST DEL VEHÍCULO
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Nivel de Combustible:</label>
+                                <div class="d-flex gap-3 flex-wrap">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="combustible" id="comb-lleno" value="Lleno">
+                                        <label class="form-check-label" for="comb-lleno">Lleno</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="combustible" id="comb-3-4" value="3/4">
+                                        <label class="form-check-label" for="comb-3-4">3/4</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="combustible" id="comb-1-2" value="1/2">
+                                        <label class="form-check-label" for="comb-1-2">1/2</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="combustible" id="comb-1-4" value="1/4">
+                                        <label class="form-check-label" for="comb-1-4">1/4</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="combustible" id="comb-bajo" value="Bajo">
+                                        <label class="form-check-label" for="comb-bajo">Bajo</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Estado de Carrocería:</label>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check-paragolfe-del-der">
+                                            <label class="form-check-label" for="check-paragolfe-del-der">Parachoques delantero derecho (Picaduras)</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check-puerta-del-der">
+                                            <label class="form-check-label" for="check-puerta-del-der">Puerta delantera derecha (Picaduras)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check-puerta-tra-der">
+                                            <label class="form-check-label" for="check-puerta-tra-der">Puerta trasera derecha (Picaduras)</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check-paragolfe-tra-izq">
+                                            <label class="form-check-label" for="check-paragolfe-tra-izq">Parachoques trasero izquierdo</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <label class="form-label">Otros:</label>
+                                    <input type="text" class="form-control" id="check-otros" placeholder="Describa otros daños...">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Montos y Pagos -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-dollar-sign me-2"></i>MONTOS Y PAGOS
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Monto Total Estimado <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control form-control-lg" id="monto-total" required placeholder="0" oninput="calcularRestante()">
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="tiene-abono" onchange="toggleAbono()" style="width: 3em; height: 1.5em;">
+                            <label class="form-check-label fw-bold" for="tiene-abono">¿El cliente realizó abono?</label>
+                        </div>
+
+                        <div id="seccion-abono" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Monto del Abono</label>
+                                    <input type="number" class="form-control" id="monto-abono" placeholder="0" oninput="calcularRestante()">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Método de Pago</label>
+                                    <select class="form-select" id="metodo-pago">
+                                        <option value="Efectivo">Efectivo</option>
+                                        <option value="Transferencia">Transferencia</option>
+                                        <option value="Tarjeta">Tarjeta</option>
+                                        <option value="Cheque">Cheque</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resumen Automático -->
+                        <div class="resumen-pagos mt-4">
+                            <h5 class="mb-3"><i class="fas fa-calculator me-2"></i>RESUMEN AUTOMÁTICO</h5>
+                            <div class="row">
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <small class="opacity-75">Total</small>
+                                        <div class="display-6 fw-bold" id="resumen-total">$0</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <small class="opacity-75">Abono</small>
+                                        <div class="display-6 fw-bold" id="resumen-abono">$0</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <small class="opacity-75">Restante</small>
+                                        <div class="display-6 fw-bold" id="resumen-restante">$0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary btn-lg" onclick="guardarOrden()">
+                                <i class="fas fa-save me-2"></i>GUARDAR ORDEN
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times me-2"></i>LIMPIAR FORMULARIO
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
         </div>
-        
-        <div class="border-t pt-4">
-            <p class="text-sm text-gray-600 mb-2">Firma del cliente:</p>
-            ${orden.firma_imagen ? `<img src="${orden.firma_imagen}" alt="Firma" class="mx-auto max-w-xs border rounded-lg">` : '<p class="text-gray-400">Firma no disponible</p>'}
+
+        <!-- Sección: Buscar Órdenes -->
+        <div id="seccion-buscar" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12 text-center">
+                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">Buscar Órdenes</h1>
+                    <p class="text-muted">Busque órdenes de trabajo por patente</p>
+                </div>
+            </div>
+
+            <!-- Buscador -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <input type="text" class="form-control form-control-lg" id="buscador-patente" 
+                                   placeholder="Ingrese la patente del vehículo..." onkeyup="if(event.key === 'Enter') buscarOrdenes();">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary btn-lg w-100" onclick="buscarOrdenes()">
+                                <i class="fas fa-search me-2"></i>BUSCAR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="mb-3">Filtrar por Estado:</h5>
+                    <div class="d-flex flex-wrap">
+                        <button class="btn filtro-btn active" onclick="filtrarOrdenes('todas')">Todas</button>
+                        <button class="btn filtro-btn btn-outline-warning" onclick="filtrarOrdenes('Enviada')">🟠 En Firma</button>
+                        <button class="btn filtro-btn btn-outline-success" onclick="filtrarOrdenes('Aprobada')">🟢 Aprobadas</button>
+                        <button class="btn filtro-btn btn-outline-danger" onclick="filtrarOrdenes('Cancelada')">🔴 Canceladas</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resultados -->
+            <div id="resultados-busqueda">
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-search fa-3x mb-3"></i>
+                    <p>Ingrese una patente para buscar órdenes</p>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-3">Buscando órdenes...</p>
+            </div>
         </div>
-        
-        <p class="text-sm text-gray-500 mt-6">Si tiene preguntas, contacte al taller.</p>
     </div>
-</body>
-</html>`;
-}
 
-// ============================================
-// GENERAR HTML DE ORDEN CANCELADA
-// ============================================
-
-function generarHTMLCancelada(orden) {
-  const numeroOrden = String(orden.numero_orden).padStart(6, '0');
-  const motivo = orden.motivo_cancelacion || 'No especificado';
-  
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orden Cancelada #${numeroOrden}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-red-100 flex items-center justify-center min-h-screen p-4">
-    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-        <div class="text-8xl mb-4">❌</div>
-        <h1 class="text-3xl font-black text-red-700 mb-2">Orden Cancelada</h1>
-        <p class="text-gray-600 mb-4">Esta orden de trabajo ha sido cancelada.</p>
-        
-        <div class="bg-red-50 rounded-xl p-4 mb-6">
-            <p class="text-sm text-gray-600">Orden N°</p>
-            <p class="text-2xl font-bold text-red-700">${numeroOrden}</p>
-            <p class="text-xs text-gray-500 mt-2">Fecha de cancelación: ${orden.fecha_cancelacion || 'N/A'}</p>
+    <!-- Modal: Ver Orden -->
+    <div class="modal fade" id="modalVerOrden" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: var(--gp-red); color: white;">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-alt me-2"></i>ORDEN DE TRABAJO #<span id="modal-numero-orden"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modal-contenido">
+                    <!-- Contenido dinámico -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="generarPDFDesdeModal()">
+                        <i class="fas fa-file-pdf me-2"></i>Descargar PDF
+                    </button>
+                    <button type="button" class="btn btn-info" onclick="compartirLink()">
+                        <i class="fas fa-share-alt me-2"></i>Compartir Link
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
         </div>
-        
-        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-            <p class="text-sm font-bold text-yellow-800">Motivo:</p>
-            <p class="text-sm text-yellow-700">${motivo}</p>
-        </div>
-        
-        <p class="text-sm text-gray-500">Si tiene preguntas, contacte al taller.</p>
     </div>
+
+    <!-- Toast de notificaciones -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header" id="toast-header">
+                <strong class="me-auto" id="toast-title">Notificación</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toast-body">
+                Mensaje
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="app.js"></script>
 </body>
-</html>`;
-}
+</html>
