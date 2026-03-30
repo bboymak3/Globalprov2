@@ -24,7 +24,7 @@ export async function onRequestGet(context) {
     const ordenes = await env.DB.prepare(`
       SELECT
         o.id, o.numero_orden, o.patente_placa, o.marca, o.modelo, o.anio,
-        o.direccion, o.referencia_direccion, o.estado_trabajo,
+        o.direccion, o.estado_trabajo,
         c.nombre as cliente_nombre, c.telefono as cliente_telefono,
         o.trabajo_frenos, o.detalle_frenos,
         o.trabajo_luces, o.detalle_luces,

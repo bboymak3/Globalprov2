@@ -67,7 +67,8 @@ export async function onRequestPost(context) {
     // Asignar orden al técnico
     await env.DB.prepare(`
       UPDATE OrdenesTrabajo
-      SET tecnico_asignado_id = ?
+      SET tecnico_asignado_id = ?,
+          estado_trabajo = 'Pendiente Visita'
       WHERE id = ?
     `).bind(data.tecnico_id, data.orden_id).run();
 
