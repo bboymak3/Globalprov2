@@ -42,7 +42,7 @@ export async function onRequestPost(context) {
 
     await env.DB.prepare(
       'UPDATE OrdenesTrabajo SET estado = ?, estado_trabajo = ?, fecha_completado = datetime("now") WHERE id = ?'
-    ).bind('Cerrada', 'Cerrada', data.orden_id).run();
+    ).bind('Aprobada', 'Cerrada', data.orden_id).run();
 
     return new Response(JSON.stringify({ success: true, mensaje: 'Orden cerrada correctamente', orden_id: data.orden_id }), {
       headers: { 'Content-Type': 'application/json' }
