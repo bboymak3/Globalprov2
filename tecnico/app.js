@@ -245,6 +245,9 @@ function mostrarOrdenEnModal(orden) {
     if (orden.trabajo_componentes) trabajosHtml += `<p>✓ Componentes: ${orden.detalle_componentes || 'Sin detalle'}</p>`;
     document.getElementById('modal-trabajos').innerHTML = trabajosHtml || '<p class="text-muted">Sin trabajos</p>';
 
+    // Mostrar notas de cierre si existen
+    document.getElementById('modal-notas').innerHTML = orden.notas ? `<p>${orden.notas.replace(/\n/g, '<br>')}</p>` : '<p class="text-muted">Sin notas de cierre</p>';
+
     // Renderizar acciones según estado
     renderizarAcciones(orden);
 
@@ -656,15 +659,15 @@ function enviarLinkFirma() {
         if (!token) return;
 
         const linkFirma = `${window.location.origin}/aprobar-tecnico?token=${token}`;
+        const mensajeCompleto = `Hola, su orden de trabajo #${String(ordenActual.numero_orden).padStart(6,'0')} está lista para su firma. Por favor ingrese al siguiente link para firmar:\n${linkFirma}`;
 
-        // Abrir WhatsApp con el link
-        const mensaje = encodeURIComponent(
-            `Hola, su orden de trabajo ha sido completada. Por favor firme la orden ingresando a: ${linkFirma}`
-        );
+        if (ordenActual && ordenActual.cliente_telefono) {
+            const telefonoLimpio = ordenActual.cliente_telefono.replace(/\D/g, '');
+            const whatsappUrl = `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(mensajeCompleto)}`;
+            window.open(whatsappUrl, '_blank');
+        }
 
-        // Nota: El teléfono del cliente no está disponible en la app del técnico
-        // Por lo tanto, mostramos el link para que el técnico lo copie y lo envíe
-        mostrarModalLinkFirma(linkFirma);
+        mostrarModalLinkFirma(linkFirma, mensajeCompleto);
     });
 }
 
@@ -689,7 +692,7 @@ function copiarLinkFirma() {
     });
 }
 
-function mostrarModalLinkFirma(link) {
+function mostrarModalLinkFirma(link, mensaje = null) {
     // Crear modal dinámicamente
     const modalHtml = `
         <div class="modal fade" id="modalLinkFirma" tabindex="-1">
@@ -707,6 +710,7 @@ function mostrarModalLinkFirma(link) {
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
+                        ${mensaje ? `<p class="small text-muted">Mensaje prellenado WhatsApp:<br>${mensaje.replace(/\n/g,'<br>')}</p>` : ''}
                         <div class="alert alert-info small">
                             <i class="fas fa-info-circle me-2"></i>
                             El cliente podrá ver y firmar la orden desde su propio dispositivo.
@@ -754,11 +758,17 @@ async function cerrarOrden() {
         return;
     }
 
+    const notasCierre = prompt('Agregar notas de cierre (opcional)');
+
     try {
         const response = await fetch(`${API_BASE}/cerrar-orden`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orden_id: ordenActual.id, tecnico_id: tecnicoActual.id })
+            body: JSON.stringify({
+                orden_id: ordenActual.id,
+                tecnico_id: tecnicoActual.id,
+                notas_cierre: notasCierre || ''
+            })
         });
 
         const data = await response.json();
@@ -772,7 +782,8 @@ async function cerrarOrden() {
 
         // Refrescar datos y pestañas
         ordenActual.estado_trabajo = 'Cerrada';
-        ordenActual.estado = 'Cerrada';
+        ordenActual.estado = 'Aprobada';
+        ordenActual.notas = data.notas || ordenActual.notas;
         mostrarOrdenEnModal(ordenActual);
         cargarOrdenes();
 

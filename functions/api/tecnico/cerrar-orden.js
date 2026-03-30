@@ -16,7 +16,7 @@ export async function onRequestPost(context) {
     }
 
     const orden = await env.DB.prepare(
-      'SELECT id, estado, estado_trabajo, firma_imagen, token, tecnico_asignado_id FROM OrdenesTrabajo WHERE id = ? AND tecnico_asignado_id = ?'
+      'SELECT id, estado, estado_trabajo, firma_imagen, token, tecnico_asignado_id, notas FROM OrdenesTrabajo WHERE id = ? AND tecnico_asignado_id = ?'
     ).bind(data.orden_id, data.tecnico_id).first();
 
     if (!orden) {
@@ -40,11 +40,32 @@ export async function onRequestPost(context) {
       });
     }
 
-    await env.DB.prepare(
-      'UPDATE OrdenesTrabajo SET estado = ?, estado_trabajo = ?, fecha_completado = datetime("now") WHERE id = ?'
-    ).bind('Aprobada', 'Cerrada', data.orden_id).run();
+    const notasCierre = (data.notas_cierre || '').trim();
+    const notasActualizadas = notasCierre ?
+      ((orden.notas || '').trim() ? `${orden.notas.trim()}\nCierre: ${notasCierre}` : `Cierre: ${notasCierre}`) :
+      (orden.notas || null);
 
-    return new Response(JSON.stringify({ success: true, mensaje: 'Orden cerrada correctamente', orden_id: data.orden_id }), {
+    await env.DB.prepare(
+      'UPDATE OrdenesTrabajo SET estado = ?, estado_trabajo = ?, fecha_completado = datetime("now"), notas = ? WHERE id = ?'
+    ).bind('Aprobada', 'Cerrada', notasActualizadas, data.orden_id).run();
+
+    await env.DB.prepare(`
+      INSERT INTO SeguimientoTrabajo (orden_id, tecnico_id, estado_anterior, estado_nuevo, observaciones)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(
+      data.orden_id,
+      data.tecnico_id,
+      orden.estado_trabajo,
+      'Cerrada',
+      notasCierre ? `Cierre: ${notasCierre}` : 'Cierre sin notas'
+    ).run();
+
+    return new Response(JSON.stringify({
+      success: true,
+      mensaje: 'Orden cerrada correctamente',
+      orden_id: data.orden_id,
+      notas: notasActualizadas
+    }), {
       headers: { 'Content-Type': 'application/json' }
     });
 
