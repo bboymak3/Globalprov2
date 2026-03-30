@@ -183,13 +183,13 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = nul
 
   let contenidoPrincipal = '';
 
-  if (tieneFirma) {
+  if (orden.estado_trabajo === 'Cerrada') {
     contenidoPrincipal = '' +
       '<div class="text-center py-5">' +
       '<div style="font-size: 5rem; color: #28a745;">✓</div>' +
-      '<h3 class="mt-4">¡Orden Aprobada!</h3>' +
-      '<p class="lead">Orden N° ' + numeroFormateado + '</p>' +
-      '<p class="text-muted">Esta orden ya ha sido firmada y aprobada.</p>' +
+      '<h3 class="mt-4">¡Orden Cerrada!</h3>' +
+      '<p class="lead">Esta orden ya ha sido firmada y cerrada.</p>' +
+      '<p class="text-muted">Número de Orden: ' + numeroFormateado + '</p>' +
       '<a href="/ver-ot?token=' + token + '" class="btn btn-primary mt-3">' +
       '<i class="fas fa-file-pdf me-2"></i>Ver Orden de Trabajo' +
       '</a>' +
