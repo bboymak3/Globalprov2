@@ -94,7 +94,7 @@ export async function onRequestPost(context) {
     // Guardar firma y cerrar la orden
     await env.DB.prepare(`
       UPDATE OrdenesTrabajo
-      SET firma_imagen = ?, estado = 'Cerrada', estado_trabajo = 'Cerrada',
+      SET firma_imagen = ?, estado = 'Aprobada', estado_trabajo = 'Cerrada',
           fecha_aprobacion = datetime('now'), fecha_completado = datetime('now'),
           notas = ?, pagado = ?, metodo_pago = ?
       WHERE id = ?
