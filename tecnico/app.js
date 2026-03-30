@@ -138,7 +138,7 @@ function renderizarOrdenes() {
     );
 
     const completadas = ordenes.filter(o =>
-        ['Completada', 'Aprobada', 'No Completada', 'Cerrada'].includes(o.estado_trabajo)
+        ['Completada', 'Aprobada', 'Usuario Satisfecho', 'No Completada', 'Cerrada'].includes(o.estado_trabajo)
     );
 
     renderizarListaOrdenes('ordenes-pendientes', pendientes);
@@ -322,9 +322,10 @@ function renderizarAcciones(orden) {
             }
             break;
         case 'Aprobada':
+        case 'Usuario Satisfecho':
             html = `
                 <div class="text-center">
-                    <p class="text-success"><i class="fas fa-check-double me-2"></i>Orden Aprobada por Cliente</p>
+                    <p class="text-success"><i class="fas fa-check-double me-2"></i>${orden.estado_trabajo === 'Usuario Satisfecho' ? 'Cliente satisfecho' : 'Orden aprobada por cliente'}</p>
                     <button class="btn btn-success action-btn" onclick="cerrarOrden()">
                         <i class="fas fa-lock me-2"></i>Cerrar Orden
                     </button>
@@ -659,14 +660,23 @@ function enviarLinkFirma() {
         if (!token) return;
 
         const linkFirma = `${window.location.origin}/aprobar-tecnico?token=${token}`;
-        const mensajeCompleto = `Hola, su orden de trabajo #${String(ordenActual.numero_orden).padStart(6,'0')} está lista para su firma. Por favor ingrese al siguiente link para firmar:\n${linkFirma}`;
+        const mensajeCompleto = `Hola, su orden de trabajo #${String(ordenActual.numero_orden).padStart(6,'0')} está lista para su firma.\n` +
+            `Resumen:\n` +
+            `Cliente: ${ordenActual.cliente_nombre || 'N/A'}\n` +
+            `Patente: ${ordenActual.patente_placa || 'N/A'}\n` +
+            `Trabajo: ${ordenActual.trabajo_frenos ? 'Frenos ' : ''}${ordenActual.trabajo_luces ? 'Luces ' : ''}${ordenActual.trabajo_tren_delantero ? 'Tren delantero ' : ''}${ordenActual.trabajo_correas ? 'Correas ' : ''}${ordenActual.trabajo_componentes ? 'Componentes ' : ''}\n` +
+            `Monto total: $${Number(ordenActual.monto_total || 0).toFixed(2)}\n` +
+            `Restante: $${Number(ordenActual.monto_restante || 0).toFixed(2)}\n` +
+            `Firma en: ${linkFirma}`;
 
+        // Abrir WhatsApp si teléfono cliente existe
         if (ordenActual && ordenActual.cliente_telefono) {
             const telefonoLimpio = ordenActual.cliente_telefono.replace(/\D/g, '');
             const whatsappUrl = `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(mensajeCompleto)}`;
             window.open(whatsappUrl, '_blank');
         }
 
+        // Mostrar modal con link + opción para abrir la página de firma directamente
         mostrarModalLinkFirma(linkFirma, mensajeCompleto);
     });
 }
@@ -703,17 +713,22 @@ function mostrarModalLinkFirma(link, mensaje = null) {
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <p class="text-muted">Envíe este link al cliente para que firme la orden:</p>
+                        <p class="text-muted">Envíe este link al cliente para que firme la orden y confirme el trabajo:</p>
                         <div class="input-group mb-3">
                             <input type="text" class="form-control" value="${link}" readonly id="link-firma-input">
                             <button class="btn btn-outline-success" onclick="copiarLinkFirmaModal('${link}')">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
+                        <div class="d-grid gap-2 mb-3">
+                            <button class="btn btn-primary" onclick="window.open('${link}', '_blank')">
+                                <i class="fas fa-external-link-alt me-2"></i>Abrir página de firma
+                            </button>
+                        </div>
                         ${mensaje ? `<p class="small text-muted">Mensaje prellenado WhatsApp:<br>${mensaje.replace(/\n/g,'<br>')}</p>` : ''}
                         <div class="alert alert-info small">
                             <i class="fas fa-info-circle me-2"></i>
-                            El cliente podrá ver y firmar la orden desde su propio dispositivo.
+                            El cliente tendrá un resumen de la orden + canvas de firma en la página.
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -950,6 +965,7 @@ function obtenerClaseEstado(estado) {
         'Pendiente Piezas': 'estado-pendiente-piezas',
         'Completada': 'estado-completada',
         'Aprobada': 'estado-aprobada',
+        'Usuario Satisfecho': 'estado-aprobada',
         'No Completada': 'estado-no-completada',
         'Cerrada': 'estado-cerrada'
     };

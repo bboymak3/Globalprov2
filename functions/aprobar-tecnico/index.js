@@ -79,10 +79,10 @@ export async function onRequestPost(context) {
 
     const esPrimeraVez = !orden.firma_imagen;
 
-    // Guardar firma y actualizar estado
+    // Guardar firma y actualizar estado (usuario satisfecho)
     await env.DB.prepare(`
       UPDATE OrdenesTrabajo
-      SET firma_imagen = ?, estado = 'Aprobada', estado_trabajo = 'Aprobada',
+      SET firma_imagen = ?, estado = 'Aprobada', estado_trabajo = 'Usuario Satisfecho',
           fecha_aprobacion = datetime('now')
       WHERE id = ?
     `).bind(firma, orden.id).run();
