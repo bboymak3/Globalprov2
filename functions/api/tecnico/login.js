@@ -21,7 +21,7 @@ export async function onRequestPost(context) {
 
     // Buscar técnico
     const tecnico = await env.DB.prepare(
-      "SELECT id, nombre, telefono, email FROM Tecnicos WHERE telefono = ? AND pin = ? AND activo = 1"
+      "SELECT id, nombre, telefono, email FROM Tecnicos WHERE telefono = ? AND codigo_acceso = ? AND activo = 1"
     ).bind(data.telefono, data.pin).first();
 
     if (!tecnico) {

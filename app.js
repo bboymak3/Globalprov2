@@ -851,7 +851,6 @@ function mostrarSeccion(seccion) {
     // Si es la sección de técnicos, cargar datos
     if (seccion === 'tecnicos') {
         cargarTecnicos();
-        cargarOrdenesAprobadas();
     }
 }
 
@@ -988,11 +987,9 @@ async function asignarOrden() {
         const data = await response.json();
 
         if (data.success) {
-            mostrarNotificacion('success', 'Orden Asignada', data.mensaje || 'La orden ha sido asignada exitosamente');
+            mostrarNotificacion('success', 'Orden Asignada', 'La orden ha sido asignada exitosamente');
             document.getElementById('asignar-orden-id').value = '';
             document.getElementById('asignar-tecnico-id').value = '';
-            // Refrescar lista de órdenes aprobadas
-            cargarOrdenesAprobadas();
         } else {
             mostrarNotificacion('error', 'Error', data.error || 'Error al asignar orden');
         }
@@ -1000,97 +997,4 @@ async function asignarOrden() {
         console.error('Error al asignar orden:', error);
         mostrarNotificacion('error', 'Error', 'Error de conexión');
     }
-}
-
-// ============================================
-// CARGAR ÓRDENES APROBADAS
-// ============================================
-
-async function cargarOrdenesAprobadas() {
-    try {
-        const response = await fetch(`${API_BASE}/admin/ordenes-aprobadas`);
-        const data = await response.json();
-
-        if (data.success && data.ordenes) {
-            renderizarListaOrdenesAprobadas(data.ordenes);
-        } else {
-            document.getElementById('lista-ordenes-aprobadas').innerHTML = `
-                <div class="text-center text-muted py-3">
-                    <p>No hay órdenes aprobadas pendientes de asignar</p>
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error('Error al cargar órdenes aprobadas:', error);
-        document.getElementById('lista-ordenes-aprobadas').innerHTML = `
-            <div class="text-center text-danger py-3">
-                <p>Error al cargar órdenes aprobadas</p>
-            </div>
-        `;
-    }
-}
-
-function renderizarListaOrdenesAprobadas(ordenes) {
-    if (ordenes.length === 0) {
-        document.getElementById('lista-ordenes-aprobadas').innerHTML = `
-            <div class="text-center text-muted py-3">
-                <p>No hay órdenes aprobadas pendientes de asignar</p>
-            </div>
-        `;
-        return;
-    }
-
-    let html = '<div class="list-group">';
-
-    ordenes.forEach(orden => {
-        const fechaAprobacion = orden.fecha_aprobacion
-            ? new Date(orden.fecha_aprobacion).toLocaleDateString('es-CL')
-            : 'N/A';
-
-        const estadoAsignacion = orden.asignada
-            ? '<span class="badge bg-secondary">Asignada</span>'
-            : '<span class="badge bg-success">Disponible</span>';
-
-        html += `
-            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center ${orden.asignada ? 'bg-light' : ''}">
-                <div>
-                    <h6 class="mb-1">
-                        <strong class="text-success">#${orden.numero_orden_formateado}</strong>
-                        <span class="text-muted ms-2">| ${orden.patente_placa}</span>
-                    </h6>
-                    <small class="text-muted">
-                        ${orden.cliente_nombre || 'Cliente sin nombre'} | Aprobada: ${fechaAprobacion}
-                    </small>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    ${estadoAsignacion}
-                    <button class="btn btn-sm btn-outline-primary" onclick="copiarNumeroOrden('${orden.numero_orden_formateado}')" title="Copiar número">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                    ${!orden.asignada ? `
-                        <button class="btn btn-sm btn-outline-success" onclick="asignarOrdenDesdeLista(${orden.id}, '${orden.numero_orden_formateado}')" title="Asignar orden">
-                            <i class="fas fa-user-plus"></i>
-                        </button>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    });
-
-    html += '</div>';
-    document.getElementById('lista-ordenes-aprobadas').innerHTML = html;
-}
-
-function copiarNumeroOrden(numeroOrden) {
-    navigator.clipboard.writeText(numeroOrden).then(() => {
-        mostrarNotificacion('success', 'Copiado', `Número de orden #${numeroOrden} copiado al portapapeles`);
-    }).catch(() => {
-        mostrarNotificacion('error', 'Error', 'No se pudo copiar el número de orden');
-    });
-}
-
-function asignarOrdenDesdeLista(ordenId, numeroOrden) {
-    document.getElementById('asignar-orden-id').value = numeroOrden;
-    document.getElementById('asignar-tecnico-id').focus();
-    mostrarNotificacion('info', 'Orden Seleccionada', `Orden #${numeroOrden} seleccionada. Seleccione un técnico para asignar.`);
 }

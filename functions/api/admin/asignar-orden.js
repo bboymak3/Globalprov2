@@ -19,24 +19,15 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Verificar que la orden existe y está aprobada (puede ser por ID o por numero_orden)
-    let orden;
-    if (typeof data.orden_id === 'number' || data.orden_id.length <= 6) {
-      // Buscar por numero_orden
-      orden = await env.DB.prepare(
-        "SELECT id, numero_orden FROM OrdenesTrabajo WHERE numero_orden = ? AND estado = 'Aprobada'"
-      ).bind(data.orden_id).first();
-    } else {
-      // Buscar por ID
-      orden = await env.DB.prepare(
-        "SELECT id, numero_orden FROM OrdenesTrabajo WHERE id = ? AND estado = 'Aprobada'"
-      ).bind(data.orden_id).first();
-    }
+    // Verificar que la orden existe y está aprobada
+    const orden = await env.DB.prepare(
+      "SELECT id FROM OrdenesTrabajo WHERE id = ? AND estado = 'Aprobada'"
+    ).bind(data.orden_id).first();
 
     if (!orden) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Orden no encontrada, no está aprobada o ya fue asignada'
+        error: 'Orden no encontrada o no está aprobada'
       }), {
         headers: { 'Content-Type': 'application/json' },
         status: 404
@@ -64,11 +55,11 @@ export async function onRequestPost(context) {
       SET tecnico_asignado_id = ?,
           estado = 'en_proceso'
       WHERE id = ?
-    `).bind(data.tecnico_id, orden.id).run();
+    `).bind(data.tecnico_id, data.orden_id).run();
 
     return new Response(JSON.stringify({
       success: true,
-      mensaje: `Orden #${String(orden.numero_orden).padStart(6, '0')} asignada al técnico ${tecnico.nombre}`
+      mensaje: `Orden asignada al técnico ${tecnico.nombre}`
     }), {
       headers: { 'Content-Type': 'application/json' }
     });

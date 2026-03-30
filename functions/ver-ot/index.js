@@ -104,7 +104,7 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
   if (orden.firma_imagen) {
     firmaHtml = '' +
       '<div class="text-center mt-4 p-4 bg-light rounded">' +
-      '<h6 class="fw-bold text-success"><i class="fas fa-check-circle me-2"></i>Orden Aprobada y Firmada</h6>' +
+      '<h6 class="fw-bold"><i class="fas fa-signature me-2"></i>Firma del Cliente</h6>' +
       '<img src="' + orden.firma_imagen + '" alt="Firma del cliente" style="max-width: 300px; border: 1px solid #ddd; border-radius: 5px;">' +
       '<p class="small text-muted mt-2">Fecha de aprobación: ' + (orden.fecha_aprobacion || 'N/A') + '</p>' +
       '</div>';
