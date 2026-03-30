@@ -138,7 +138,7 @@ function renderizarOrdenes() {
     );
 
     const completadas = ordenes.filter(o =>
-        ['Completada', 'Aprobada', 'No Completada'].includes(o.estado_trabajo)
+        ['Completada', 'Aprobada', 'No Completada', 'Cerrada'].includes(o.estado_trabajo)
     );
 
     renderizarListaOrdenes('ordenes-pendientes', pendientes);
@@ -308,11 +308,25 @@ function renderizarAcciones(orden) {
                     </button>
                 `;
             } else {
-                html = `<p class="text-center text-success"><i class="fas fa-check-circle me-2"></i>Firma registrada por el cliente</p>`;
+                html = `
+                    <div class="text-center">
+                        <p class="text-success"><i class="fas fa-check-circle me-2"></i>Firma registrada por el cliente</p>
+                        <button class="btn btn-success action-btn" onclick="cerrarOrden()">
+                            <i class="fas fa-lock me-2"></i>Cerrar Orden
+                        </button>
+                    </div>
+                `;
             }
             break;
         case 'Aprobada':
-            html = `<p class="text-center text-success"><i class="fas fa-check-double me-2"></i>Orden Aprobada por Cliente</p>`;
+            html = `
+                <div class="text-center">
+                    <p class="text-success"><i class="fas fa-check-double me-2"></i>Orden Aprobada por Cliente</p>
+                    <button class="btn btn-success action-btn" onclick="cerrarOrden()">
+                        <i class="fas fa-lock me-2"></i>Cerrar Orden
+                    </button>
+                </div>
+            `;
             break;
         case 'No Completada':
             html = `<p class="text-center text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Orden No Completada</p>`;
@@ -734,6 +748,60 @@ function copiarLinkFirmaModal(link) {
     });
 }
 
+async function cerrarOrden() {
+    if (!ordenActual || !tecnicoActual) {
+        mostrarNotificacion('error', 'Error', 'No se puede cerrar la orden en este momento');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/cerrar-orden`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orden_id: ordenActual.id, tecnico_id: tecnicoActual.id })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            mostrarNotificacion('error', 'No se pudo cerrar', data.error || 'Error al cerrar la orden');
+            return;
+        }
+
+        mostrarNotificacion('success', 'Orden cerrada', 'La orden ha sido cerrada con éxito');
+
+        // Refrescar datos y pestañas
+        ordenActual.estado_trabajo = 'Cerrada';
+        ordenActual.estado = 'Cerrada';
+        mostrarOrdenEnModal(ordenActual);
+        cargarOrdenes();
+
+        // Enviar resumen final por WhatsApp (si hay teléfono de cliente)
+        if (ordenActual.cliente_telefono) {
+            enviarResumenWhatsApp();
+        }
+
+    } catch (error) {
+        console.error('Error al cerrar orden:', error);
+        mostrarNotificacion('error', 'Error', 'No se pudo cerrar la orden');
+    }
+}
+
+function enviarResumenWhatsApp() {
+    if (!ordenActual) return;
+
+    const tel = ordenActual.cliente_telefono.replace(/\D/g, '');
+    const mensaje = encodeURIComponent(`Pedido #${String(ordenActual.numero_orden).padStart(6, '0')} cerrado.\n` +
+        `Cliente: ${ordenActual.cliente_nombre || 'N/A'}\n` +
+        `Vehículo: ${ordenActual.marca || 'N/A'} ${ordenActual.modelo || ''} ${ordenActual.patente_placa || ''}\n` +
+        `Estado final: ${ordenActual.estado_trabajo || ordenActual.estado}\n` +
+        `Fecha cierre: ${new Date().toLocaleString('es-CL')}\n` +
+        `Gracias por su confianza en Global Pro!`);
+
+    const whatsappUrl = `https://wa.me/${tel}?text=${mensaje}`;
+    window.open(whatsappUrl, '_blank');
+}
+
 // ============================================
 // ORDEN NO COMPLETADA
 // ============================================
@@ -832,7 +900,8 @@ function obtenerClaseEstado(estado) {
         'Pendiente Piezas': 'estado-pendiente-piezas',
         'Completada': 'estado-completada',
         'Aprobada': 'estado-aprobada',
-        'No Completada': 'estado-no-completada'
+        'No Completada': 'estado-no-completada',
+        'Cerrada': 'estado-cerrada'
     };
     return clases[estado] || 'bg-secondary';
 }
