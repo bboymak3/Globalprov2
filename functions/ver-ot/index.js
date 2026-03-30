@@ -184,6 +184,8 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '<hr>' +
     '<h6 class="fw-bold">ESTADO DE LA ORDEN</h6>' +
     '<p><span class="badge ' + estadoClass + ' fs-6">' + (orden.estado || 'N/A') + '</span></p>' +
+    ((orden.estado_trabajo === 'Cerrada') ? '<p><span class="badge bg-success fs-6">Orden cerrada</span></p>' : '') +
+    ((orden.fecha_completado) ? '<p><strong>Fecha de cierre:</strong> ' + orden.fecha_completado + '</p>' : '') +
     '</div>' +
     '</div>' +
     '<hr>' +
