@@ -45,9 +45,15 @@ export async function onRequestPost(context) {
       ((orden.notas || '').trim() ? `${orden.notas.trim()}\nCierre: ${notasCierre}` : `Cierre: ${notasCierre}`) :
       (orden.notas || null);
 
+    const pagoCompletado = !!data.pago_completado;
+    const metodoPago = data.metodo_pago ? data.metodo_pago.trim() : null;
+
+    // Si pago completado y monto restante existe, dejamos en 0, sino conservamos saldo
+    const nuevoMontoRestante = pagoCompletado ? 0 : (orden.monto_restante || 0);
+
     await env.DB.prepare(
-      'UPDATE OrdenesTrabajo SET estado = ?, estado_trabajo = ?, fecha_completado = datetime("now"), notas = ? WHERE id = ?'
-    ).bind('Aprobada', 'Cerrada', notasActualizadas, data.orden_id).run();
+      'UPDATE OrdenesTrabajo SET estado = ?, estado_trabajo = ?, fecha_completado = datetime("now"), notas = ?, pagado = ?, metodo_pago = ?, monto_restante = ? WHERE id = ?'
+    ).bind('Aprobada', 'Cerrada', notasActualizadas, pagoCompletado ? 1 : 0, metodoPago, nuevoMontoRestante, data.orden_id).run();
 
     await env.DB.prepare(`
       INSERT INTO SeguimientoTrabajo (orden_id, tecnico_id, estado_anterior, estado_nuevo, observaciones)

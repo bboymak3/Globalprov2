@@ -760,6 +760,33 @@ async function cerrarOrden() {
 
     const notasCierre = prompt('Agregar notas de cierre (opcional)');
 
+    const pagoCompletado = confirm('¿El cliente terminó de cancelar?');
+    let metodoPago = null;
+    let notaPago = '';
+
+    if (pagoCompletado) {
+        metodoPago = prompt('Método de pago (Efectivo / Transferencia)').trim();
+        if (!metodoPago) {
+            metodoPago = 'No especificado';
+        }
+        notaPago = `Pago completado. Método: ${metodoPago}`;
+    } else {
+        const motivoNoPago = prompt('Indica motivo por el cual no terminó de cancelar (opcional)');
+        notaPago = motivoNoPago ? `Pago pendiente: ${motivoNoPago}` : 'Pago pendiente: no especificó motivo';
+    }
+
+    const restante = Number(ordenActual.monto_restante || 0);
+    let notaSaldo = '';
+    if (restante > 0) {
+        notaSaldo = `Saldo pendiente: $${restante.toFixed(2)}`;
+    } else if (restante < 0) {
+        notaSaldo = `Saldo a favor del cliente: $${Math.abs(restante).toFixed(2)}`;
+    } else {
+        notaSaldo = 'Saldo cancelado completamente.';
+    }
+
+    const notasFinales = [notasCierre, notaPago, notaSaldo].filter(Boolean).join(' | ');
+
     try {
         const response = await fetch(`${API_BASE}/cerrar-orden`, {
             method: 'POST',
@@ -767,7 +794,9 @@ async function cerrarOrden() {
             body: JSON.stringify({
                 orden_id: ordenActual.id,
                 tecnico_id: tecnicoActual.id,
-                notas_cierre: notasCierre || ''
+                notas_cierre: notasFinales,
+                pago_completado: pagoCompletado,
+                metodo_pago: metodoPago
             })
         });
 
@@ -783,7 +812,10 @@ async function cerrarOrden() {
         // Refrescar datos y pestañas
         ordenActual.estado_trabajo = 'Cerrada';
         ordenActual.estado = 'Aprobada';
-        ordenActual.notas = data.notas || ordenActual.notas;
+        ordenActual.notas = data.notas || notasFinales;
+        ordenActual.pagado = pagoCompletado ? 1 : 0;
+        ordenActual.metodo_pago = metodoPago;
+        ordenarMontoRestante();
         mostrarOrdenEnModal(ordenActual);
         cargarOrdenes();
 
@@ -795,6 +827,13 @@ async function cerrarOrden() {
     } catch (error) {
         console.error('Error al cerrar orden:', error);
         mostrarNotificacion('error', 'Error', 'No se pudo cerrar la orden');
+    }
+}
+
+function ordenarMontoRestante() {
+    if (!ordenActual) return;
+    if ( Number(ordenActual.monto_restante || 0) > 0 && confirm('¿Registrar el saldo pendiente como pagado?')) {
+        ordenActual.monto_restante = 0;
     }
 }
 
