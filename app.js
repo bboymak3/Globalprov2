@@ -154,6 +154,7 @@ async function guardarOrden() {
         cliente: document.getElementById('cliente').value,
         rut: document.getElementById('rut').value,
         telefono: document.getElementById('telefono').value,
+        direccion: document.getElementById('direccion').value,
         fecha_ingreso: document.getElementById('fecha-ingreso').value,
         hora_ingreso: document.getElementById('hora-ingreso').value,
         recepcionista: document.getElementById('recepcionista').value,
