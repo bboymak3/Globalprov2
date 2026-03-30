@@ -327,6 +327,16 @@ function renderizarAcciones(orden) {
                 </div>
             `;
             break;
+        case 'Cerrada':
+            html = `
+                <div class="text-center">
+                    <p class="text-success"><i class="fas fa-check-circle me-2"></i>Orden ya cerrada</p>
+                    <button class="btn btn-secondary action-btn" disabled>
+                        <i class="fas fa-lock me-2"></i>Ya cerrada
+                    </button>
+                </div>
+            `;
+            break;
         case 'No Completada':
             html = `<p class="text-center text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Orden No Completada</p>`;
             break;
@@ -775,6 +785,15 @@ async function aceptarYCerrarOrden() {
     if (!ordenActual || !tecnicoActual) {
         mostrarNotificacion('error', 'Error', 'No se puede procesar la orden en este momento');
         return;
+    }
+
+    if (ordenActual.estado_trabajo === 'Cerrada') {
+        mostrarNotificacion('warning', 'Orden cerrada', 'Esta orden ya está cerrada y no puede volver a procesarse.');
+        return;
+    }
+
+    if (ordenActual.firma_imagen) {
+        mostrarNotificacion('info', 'Firmado', 'La orden ya está firmada por el cliente. Se cerrará ahora.');
     }
 
     // Pedir información de cierre al técnico

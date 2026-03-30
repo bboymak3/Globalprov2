@@ -33,6 +33,20 @@ export async function onRequestPost(context) {
       });
     }
 
+    if (orden.estado_trabajo === 'Cerrada') {
+      return new Response(JSON.stringify({ success: false, error: 'La orden ya está cerrada' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
+
+    if (!orden.firma_imagen) {
+      return new Response(JSON.stringify({ success: false, error: 'No se puede cerrar la orden: cliente no ha firmado aún' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
+
     if (orden.estado !== 'Aprobada' && orden.estado_trabajo !== 'Aprobada') {
       return new Response(JSON.stringify({ success: false, error: 'No se puede cerrar la orden porque no está aprobada' }), {
         headers: { 'Content-Type': 'application/json' },
