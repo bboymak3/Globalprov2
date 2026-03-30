@@ -66,7 +66,7 @@ export async function onRequestPost(context) {
 
     // Crear técnico
     await env.DB.prepare(`
-      INSERT INTO Tecnicos (nombre, telefono, email, codigo_acceso, activo)
+      INSERT INTO Tecnicos (nombre, telefono, email, pin, activo)
       VALUES (?, ?, ?, ?, 1)
     `).bind(
       data.nombre,
