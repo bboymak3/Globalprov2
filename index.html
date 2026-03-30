@@ -221,6 +221,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="mostrarSeccion('buscar')">Buscar Órdenes</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="mostrarSeccion('tecnicos')">Gestión Técnicos</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -601,6 +604,93 @@
                 <p class="mt-3">Buscando órdenes...</p>
             </div>
         </div>
+
+        <!-- Sección: Gestión de Técnicos -->
+        <div id="seccion-tecnicos" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12 text-center">
+                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">Gestión de Técnicos</h1>
+                    <p class="text-muted">Registre técnicos y asigne órdenes de trabajo</p>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Formulario para registrar técnico -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-user-plus me-2"></i>Registrar Nuevo Técnico
+                        </div>
+                        <div class="card-body">
+                            <form id="form-tecnico" onsubmit="registrarTecnico(event)">
+                                <div class="mb-3">
+                                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="tecnico-nombre" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Teléfono <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" id="tecnico-telefono" required placeholder="+56 9 1234 5678">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="tecnico-email" placeholder="tecnico@email.com">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">PIN de Acceso (4 dígitos) <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="tecnico-pin" required
+                                           maxlength="4" pattern="[0-9]{4}" placeholder="1234">
+                                    <small class="text-muted">Este PIN se usará para que el técnico acceda a la app móvil</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-save me-2"></i>Registrar Técnico
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de técnicos y asignación de órdenes -->
+                <div class="col-md-8">
+                    <!-- Lista de técnicos -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="fas fa-users me-2"></i>Técnicos Registrados
+                        </div>
+                        <div class="card-body">
+                            <div id="lista-tecnicos">
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando técnicos...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Asignar orden a técnico -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-tasks me-2"></i>Asignar Orden a Técnico
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Número de Orden</label>
+                                    <input type="number" class="form-control" id="asignar-orden-id" placeholder="Ej: 58">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Técnico</label>
+                                    <select class="form-select" id="asignar-tecnico-id" required>
+                                        <option value="">Seleccione un técnico...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn btn-success" onclick="asignarOrden()">
+                                <i class="fas fa-check me-2"></i>Asignar Orden
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal: Ver Orden -->
@@ -617,8 +707,11 @@
                     <!-- Contenido dinámico -->
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="verPDFEnLinea()">
+                        <i class="fas fa-eye me-2"></i>Ver PDF en Línea
+                    </button>
                     <button type="button" class="btn btn-success" onclick="generarPDFDesdeModal()">
-                        <i class="fas fa-file-pdf me-2"></i>Descargar PDF
+                        <i class="fas fa-download me-2"></i>Descargar PDF
                     </button>
                     <button type="button" class="btn btn-info" onclick="compartirLink()">
                         <i class="fas fa-share-alt me-2"></i>Compartir Link

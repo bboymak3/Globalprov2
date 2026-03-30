@@ -80,7 +80,10 @@ function calcularRestante() {
 
 async function buscarVehiculoPorPatente(patente) {
     if (!patente || patente.length < 3) return;
-    
+
+    // Limpiar espacios de la patente
+    patente = patente.replace(/\s+/g, '').toUpperCase();
+
     try {
         const response = await fetch(`${API_BASE}/buscar-patente?patente=${encodeURIComponent(patente)}`);
         const data = await response.json();
@@ -138,56 +141,56 @@ async function guardarOrden() {
         return;
     }
     
-    // Recopilar datos - EXACTAMENTE los que el backend espera
-    const tieneAbono = document.getElementById('tiene-abono').checked;
+    // Recopilar datos
     const ordenData = {
-        patente: document.getElementById('patente').value.toUpperCase(),
+        patente: document.getElementById('patente').value.toUpperCase().replace(/\s+/g, ''),
         marca: document.getElementById('marca').value,
         modelo: document.getElementById('modelo').value,
         anio: parseInt(document.getElementById('anio').value) || null,
         cilindrada: document.getElementById('cilindrada').value,
         combustible: document.getElementById('combustible').value,
         kilometraje: document.getElementById('kilometraje').value,
-
+        
         cliente: document.getElementById('cliente').value,
         rut: document.getElementById('rut').value,
         telefono: document.getElementById('telefono').value,
         fecha_ingreso: document.getElementById('fecha-ingreso').value,
         hora_ingreso: document.getElementById('hora-ingreso').value,
         recepcionista: document.getElementById('recepcionista').value,
-
+        
         // Trabajos
         trabajo_frenos: document.getElementById('check-frenos').checked ? 1 : 0,
         detalle_frenos: document.getElementById('detalle-frenos').value,
-
+        
         trabajo_luces: document.getElementById('check-luces').checked ? 1 : 0,
         detalle_luces: document.getElementById('detalle-luces').value,
-
+        
         trabajo_tren_delantero: document.getElementById('check-tren').checked ? 1 : 0,
         detalle_tren_delantero: document.getElementById('detalle-tren').value,
-
+        
         trabajo_correas: document.getElementById('check-correas').checked ? 1 : 0,
         detalle_correas: document.getElementById('detalle-correas').value,
-
+        
         trabajo_componentes: document.getElementById('check-componentes').checked ? 1 : 0,
         detalle_componentes: document.getElementById('detalle-componentes').value,
-
+        
         // Checklist
         nivel_combustible: document.querySelector('input[name="combustible"]:checked')?.value || null,
-
+        
         check_paragolfe_delantero_der: document.getElementById('check-paragolfe-del-der').checked ? 1 : 0,
         check_puerta_delantera_der: document.getElementById('check-puerta-del-der').checked ? 1 : 0,
         check_puerta_trasera_der: document.getElementById('check-puerta-tra-der').checked ? 1 : 0,
         check_paragolfe_trasero_izq: document.getElementById('check-paragolfe-tra-izq').checked ? 1 : 0,
         check_otros_carroceria: document.getElementById('check-otros').value,
-
-        // Montos - EXACTAMENTE los 4 que el backend espera
+        
+        // Montos
         monto_total: parseFloat(document.getElementById('monto-total').value) || 0,
-        monto_abono: tieneAbono ? (parseFloat(document.getElementById('monto-abono').value) || 0) : 0,
-        metodo_pago: tieneAbono ? document.getElementById('metodo-pago').value : null
+        tiene_abono: document.getElementById('tiene-abono').checked ? 1 : 0,
+        monto_abono: document.getElementById('tiene-abono').checked ? (parseFloat(document.getElementById('monto-abono').value) || 0) : 0,
+        metodo_pago: document.getElementById('tiene-abono').checked ? document.getElementById('metodo-pago').value : null
     };
-
-    // Calcular restante y agregarlo
+    
+    // Calcular restante
     ordenData.monto_restante = ordenData.monto_total - ordenData.monto_abono;
     
     try {
@@ -265,8 +268,8 @@ async function guardarOrden() {
 // ============================================
 
 async function buscarOrdenes() {
-    const patente = document.getElementById('buscador-patente').value.toUpperCase();
-    
+    let patente = document.getElementById('buscador-patente').value.toUpperCase().replace(/\s+/g, '');
+
     if (!patente) {
         mostrarNotificacion('warning', 'Advertencia', 'Ingrese una patente para buscar');
         return;
@@ -358,18 +361,13 @@ function filtrarOrdenes(estado) {
 async function verOrden(ordenId) {
     try {
         mostrarLoading(true);
-
+        
         const response = await fetch(`${API_BASE}/ver-orden?id=${ordenId}`);
         const data = await response.json();
-
+        
         if (data.orden) {
             ordenActual = data.orden;
-
-            // Cargar historial de pagos
-            const pagos = await cargarPagosOrden(ordenId);
-
-            // Mostrar orden con pagos
-            mostrarOrdenConPagos(data.orden, pagos);
+            mostrarOrdenEnModal(data.orden);
         }
     } catch (error) {
         console.error('Error al ver orden:', error);
@@ -532,182 +530,201 @@ async function generarPDFDesdeModal() {
         mostrarNotificacion('error', 'Error', 'No hay orden seleccionada');
         return;
     }
-    
+
     generarPDF(ordenActual);
+}
+
+function verPDFEnLinea() {
+    if (!ordenActual || !ordenActual.token) {
+        mostrarNotificacion('error', 'Error', 'No hay orden seleccionada o no tiene token');
+        return;
+    }
+
+    const link = `${window.location.origin}/ver-ot?token=${ordenActual.token}`;
+    window.open(link, '_blank');
 }
 
 async function generarPDF(orden) {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
+    // Usar landscape (horizontal) para más espacio
+    const doc = new jsPDF('l', 'mm', 'a4');
+
     const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
-    let yPos = 20;
-    
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const leftMargin = 10;
+    let yPos = 15;
+
     // Título
-    doc.setFontSize(20);
+    doc.setFontSize(16);
     doc.setTextColor(168, 0, 0);
-    doc.text('ORDEN DE TRABAJO', 105, yPos, { align: 'center' });
-    yPos += 10;
-    
-    doc.setFontSize(14);
-    doc.text(`N° ${numeroFormateado}`, 105, yPos, { align: 'center' });
-    yPos += 10;
-    
-    doc.text('GLOBAL PRO AUTOMOTRIZ', 105, yPos, { align: 'center' });
-    yPos += 20;
-    
+    doc.text('ORDEN DE TRABAJO', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 8;
+
+    doc.setFontSize(12);
+    doc.text(`N° ${numeroFormateado}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 6;
+
+    doc.setFontSize(10);
+    doc.text('GLOBAL PRO AUTOMOTRIZ', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 12;
+
     // Información del Taller
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    doc.text('1. INFORMACIÓN DEL TALLER', 20, yPos);
-    yPos += 8;
-    
+    doc.text('1. INFORMACIÓN DEL TALLER', leftMargin, yPos);
+    yPos += 6;
+
     doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    doc.text('Empresa: Global Pro Automotriz', 25, yPos); yPos += 6;
-    doc.text('Dirección: Padre Alberto Hurtado 3596, Pedro Aguirre Cerda', 25, yPos); yPos += 6;
-    doc.text('Contactos: +56 9 8471 5405 / +56 9 3902 6185', 25, yPos); yPos += 6;
-    doc.text('RRSS: @globalproautomotriz', 25, yPos); yPos += 15;
-    
+    doc.setFontSize(7);
+    doc.text('Empresa: Global Pro Automotriz', leftMargin, yPos); yPos += 4;
+    doc.text('Dirección: Padre Alberto Hurtado 3596, Pedro Aguirre Cerda', leftMargin, yPos); yPos += 4;
+    doc.text('Contactos: +56 9 8471 5405 / +56 9 3902 6185', leftMargin, yPos); yPos += 4;
+    doc.text('RRSS: @globalproautomotriz', leftMargin, yPos); yPos += 10;
+
     // Datos del Cliente
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    doc.text('2. DATOS DEL CLIENTE', 20, yPos);
-    yPos += 8;
-    
+    doc.text('2. DATOS DEL CLIENTE', leftMargin, yPos);
+    yPos += 6;
+
     doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    doc.text(`Cliente: ${orden.cliente_nombre || 'N/A'}`, 25, yPos); yPos += 6;
-    doc.text(`R.U.T.: ${orden.cliente_rut || 'N/A'}`, 25, yPos); yPos += 6;
-    doc.text(`Teléfono: ${orden.cliente_telefono || 'N/A'}`, 25, yPos); yPos += 6;
-    doc.text(`Fecha Ingreso: ${orden.fecha_ingreso || 'N/A'} ${orden.hora_ingreso || ''}`, 25, yPos); yPos += 6;
-    doc.text(`Recepcionista: ${orden.recepcionista || 'N/A'}`, 25, yPos); yPos += 15;
-    
+    doc.setFontSize(7);
+    doc.text(`Cliente: ${orden.cliente_nombre || 'N/A'}`, leftMargin, yPos); yPos += 4;
+    doc.text(`R.U.T.: ${orden.cliente_rut || 'N/A'}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Teléfono: ${orden.cliente_telefono || 'N/A'}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Fecha Ingreso: ${orden.fecha_ingreso || 'N/A'} ${orden.hora_ingreso || ''}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Recepcionista: ${orden.recepcionista || 'N/A'}`, leftMargin, yPos); yPos += 10;
+
     // Datos del Vehículo
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    doc.text('3. DATOS DEL VEHÍCULO', 20, yPos);
-    yPos += 8;
-    
+    doc.text('3. DATOS DEL VEHÍCULO', leftMargin, yPos);
+    yPos += 6;
+
     doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    doc.text(`Patente: ${orden.patente_placa}`, 25, yPos); yPos += 6;
-    doc.text(`Marca/Modelo: ${orden.marca || 'N/A'} ${orden.modelo || ''} (${orden.anio || 'N/A'})`, 25, yPos); yPos += 6;
-    doc.text(`Cilindrada: ${orden.cilindrada || 'N/A'}`, 25, yPos); yPos += 6;
-    doc.text(`Combustible: ${orden.combustible || 'N/A'}`, 25, yPos); yPos += 6;
-    doc.text(`Kilometraje: ${orden.kilometraje || 'N/A'}`, 25, yPos); yPos += 15;
-    
+    doc.setFontSize(7);
+    doc.text(`Patente: ${orden.patente_placa}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Marca/Modelo: ${orden.marca || 'N/A'} ${orden.modelo || ''} (${orden.anio || 'N/A'})`, leftMargin, yPos); yPos += 4;
+    doc.text(`Cilindrada: ${orden.cilindrada || 'N/A'}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Combustible: ${orden.combustible || 'N/A'}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Kilometraje: ${orden.kilometraje || 'N/A'}`, leftMargin, yPos); yPos += 10;
+
     // Trabajos
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    doc.text('4. TRABAJOS A REALIZAR', 20, yPos);
-    yPos += 8;
-    
+    doc.text('4. TRABAJOS A REALIZAR', leftMargin, yPos);
+    yPos += 6;
+
     doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    
-    if (orden.trabajo_frenos) {
-        doc.text('✓ Frenos', 25, yPos); yPos += 5;
-        doc.text(`  ${orden.detalle_frenos || 'Sin detalle'}`, 25, yPos); yPos += 6;
+    doc.setFontSize(7);
+
+    let trabajosList = [];
+    if (orden.trabajo_frenos) trabajosList.push({ nombre: 'Frenos', detalle: orden.detalle_frenos });
+    if (orden.trabajo_luces) trabajosList.push({ nombre: 'Luces', detalle: orden.detalle_luces });
+    if (orden.trabajo_tren_delantero) trabajosList.push({ nombre: 'Tren Delantero', detalle: orden.detalle_tren_delantero });
+    if (orden.trabajo_correas) trabajosList.push({ nombre: 'Correas', detalle: orden.detalle_correas });
+    if (orden.trabajo_componentes) trabajosList.push({ nombre: 'Componentes', detalle: orden.detalle_componentes });
+
+    if (trabajosList.length === 0) {
+        doc.text('  Sin trabajos seleccionados', leftMargin, yPos); yPos += 6;
+    } else {
+        trabajosList.forEach(trabajo => {
+            doc.text(`  ✓ ${trabajo.nombre}: ${trabajo.detalle || 'Sin detalle'}`, leftMargin, yPos); yPos += 4;
+        });
     }
-    if (orden.trabajo_luces) {
-        doc.text('✓ Luces', 25, yPos); yPos += 5;
-        doc.text(`  ${orden.detalle_luces || 'Sin detalle'}`, 25, yPos); yPos += 6;
-    }
-    if (orden.trabajo_tren_delantero) {
-        doc.text('✓ Tren Delantero', 25, yPos); yPos += 5;
-        doc.text(`  ${orden.detalle_tren_delantero || 'Sin detalle'}`, 25, yPos); yPos += 6;
-    }
-    if (orden.trabajo_correas) {
-        doc.text('✓ Correas', 25, yPos); yPos += 5;
-        doc.text(`  ${orden.detalle_correas || 'Sin detalle'}`, 25, yPos); yPos += 6;
-    }
-    if (orden.trabajo_componentes) {
-        doc.text('✓ Componentes', 25, yPos); yPos += 5;
-        doc.text(`  ${orden.detalle_componentes || 'Sin detalle'}`, 25, yPos); yPos += 6;
-    }
-    yPos += 10;
-    
+    yPos += 8;
+
     // Checklist
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    doc.text('5. CHECKLIST DEL VEHÍCULO', 20, yPos);
-    yPos += 8;
-    
+    doc.text('5. CHECKLIST DEL VEHÍCULO', leftMargin, yPos);
+    yPos += 6;
+
     doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    doc.text(`Nivel de Combustible: ${orden.nivel_combustible || 'No registrado'}`, 25, yPos); yPos += 6;
-    doc.text('Estado de Carrocería:', 25, yPos); yPos += 6;
-    if (orden.check_paragolfe_delantero_der) { doc.text('  ✓ Parachoques delantero derecho', 25, yPos); yPos += 5; }
-    if (orden.check_puerta_delantera_der) { doc.text('  ✓ Puerta delantera derecha', 25, yPos); yPos += 5; }
-    if (orden.check_puerta_trasera_der) { doc.text('  ✓ Puerta trasera derecha', 25, yPos); yPos += 5; }
-    if (orden.check_paragolfe_trasero_izq) { doc.text('  ✓ Parachoques trasero izquierdo', 25, yPos); yPos += 5; }
-    if (orden.check_otros_carroceria) { doc.text(`  ${orden.check_otros_carroceria}`, 25, yPos); yPos += 5; }
-    yPos += 10;
-    
+    doc.setFontSize(7);
+    doc.text(`Nivel de Combustible: ${orden.nivel_combustible || 'No registrado'}`, leftMargin, yPos); yPos += 4;
+    doc.text('Estado de Carrocería:', leftMargin, yPos); yPos += 4;
+
+    let checklistItems = [];
+    if (orden.check_paragolfe_delantero_der) checklistItems.push('Parachoques delantero derecho');
+    if (orden.check_puerta_delantera_der) checklistItems.push('Puerta delantera derecha');
+    if (orden.check_puerta_trasera_der) checklistItems.push('Puerta trasera derecha');
+    if (orden.check_paragolfe_trasero_izq) checklistItems.push('Parachoques trasero izquierdo');
+    if (orden.check_otros_carroceria) checklistItems.push(orden.check_otros_carroceria);
+
+    if (checklistItems.length === 0) {
+        doc.text('  Sin observaciones', leftMargin, yPos); yPos += 4;
+    } else {
+        checklistItems.forEach(item => {
+            doc.text(`  ✓ ${item}`, leftMargin, yPos); yPos += 4;
+        });
+    }
+    yPos += 8;
+
     // Valores
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    doc.text('6. VALORES', 20, yPos);
-    yPos += 8;
-    
+    doc.text('6. VALORES', leftMargin, yPos);
+    yPos += 6;
+
     doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    doc.text(`Total Estimado: $${(orden.monto_total || 0).toLocaleString('es-CL')}`, 25, yPos); yPos += 6;
-    doc.text(`Abono Recibido: $${(orden.monto_abono || 0).toLocaleString('es-CL')}`, 25, yPos); yPos += 6;
-    doc.text(`Restante: $${(orden.monto_restante || 0).toLocaleString('es-CL')}`, 25, yPos); yPos += 6;
+    doc.setFontSize(7);
+    doc.text(`Total Estimado: $${(orden.monto_total || 0).toLocaleString('es-CL')}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Abono Recibido: $${(orden.monto_abono || 0).toLocaleString('es-CL')}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Restante: $${(orden.monto_restante || 0).toLocaleString('es-CL')}`, leftMargin, yPos); yPos += 4;
     if (orden.metodo_pago) {
-        doc.text(`Método de Pago: ${orden.metodo_pago}`, 25, yPos); yPos += 6;
+        doc.text(`Método de Pago: ${orden.metodo_pago}`, leftMargin, yPos); yPos += 4;
     }
-    yPos += 10;
-    
-    // Estado y Firma
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text('7. ESTADO Y FIRMA', 20, yPos);
     yPos += 8;
-    
+
+    // Estado y Firma
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.text('7. ESTADO Y FIRMA', leftMargin, yPos);
+    yPos += 6;
+
     doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    doc.text(`Estado: ${orden.estado}`, 25, yPos); yPos += 6;
+    doc.setFontSize(7);
+    doc.text(`Estado: ${orden.estado}`, leftMargin, yPos); yPos += 4;
     if (orden.fecha_aprobacion) {
-        doc.text(`Fecha de Aprobación: ${orden.fecha_aprobacion}`, 25, yPos); yPos += 6;
+        doc.text(`Fecha de Aprobación: ${orden.fecha_aprobacion}`, leftMargin, yPos); yPos += 4;
     }
-    
+
     // Agregar imagen de firma si existe
     if (orden.firma_imagen) {
         try {
-            doc.text('Firma del Cliente:', 25, yPos); yPos += 6;
-            doc.addImage(orden.firma_imagen, 'PNG', 25, yPos, 50, 30);
-            yPos += 35;
-            doc.text(`Firma: ${orden.cliente_nombre || 'N/A'} (${orden.cliente_rut || 'N/A'})`, 25, yPos); yPos += 6;
+            doc.text('Firma del Cliente:', leftMargin, yPos); yPos += 4;
+            doc.addImage(orden.firma_imagen, 'PNG', leftMargin, yPos, 40, 25);
+            yPos += 28;
+            doc.text(`Firma: ${orden.cliente_nombre || 'N/A'} (${orden.cliente_rut || 'N/A'})`, leftMargin, yPos); yPos += 4;
         } catch (e) {
             console.error('Error al agregar firma:', e);
         }
     }
-    
+
     // Validez
-    yPos += 10;
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text('8. VALIDEZ Y RESPONSABILIDAD', 20, yPos);
-    yPos += 8;
-    
-    doc.setFont(undefined, 'normal');
+    yPos += 6;
     doc.setFontSize(9);
-    doc.text('• El cliente autoriza la intervención del vehículo', 25, yPos); yPos += 5;
-    doc.text('• Se autorizan pruebas de carretera necesarias', 25, yPos); yPos += 5;
-    doc.text('• La empresa no se hace responsable por objetos no declarados', 25, yPos); yPos += 5;
-    
+    doc.setFont(undefined, 'bold');
+    doc.text('8. VALIDEZ Y RESPONSABILIDAD', leftMargin, yPos);
+    yPos += 6;
+
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(6);
+    doc.text('• El cliente autoriza la intervención del vehículo', leftMargin, yPos); yPos += 4;
+    doc.text('• Se autorizan pruebas de carretera necesarias', leftMargin, yPos); yPos += 4;
+    doc.text('• La empresa no se hace responsable por objetos no declarados', leftMargin, yPos); yPos += 4;
+
     // Footer
-    doc.setFontSize(8);
+    doc.setFontSize(6);
     doc.setTextColor(128, 128, 128);
-    doc.text(`Generado: ${new Date().toLocaleString('es-CL')}`, 105, 285, { align: 'center' });
-    
+    doc.text(`Generado: ${new Date().toLocaleString('es-CL')}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
     // Guardar
-    doc.save(`OT-${numeroFormateado}-${orden.patente_placa.replace(/\s/g, '')}.pdf`);
-    
+    doc.save(`OT-${numeroFormateado}-${orden.patente_placa}.pdf`);
+
     mostrarNotificacion('success', 'PDF Generado', 'El PDF se ha descargado exitosamente');
 }
 
@@ -810,305 +827,174 @@ function mostrarNotificacion(tipo, titulo, mensaje) {
 }
 
 // ============================================
-// SISTEMA DE PAGOS PARCIALES
+// GESTIÓN DE TÉCNICOS
 // ============================================
 
-async function cargarPagosOrden(ordenId) {
-    try {
-        const response = await fetch(`${API_BASE}/registrar-pago?orden_id=${ordenId}`);
-        const data = await response.json();
+function mostrarSeccion(seccion) {
+    // Ocultar todas las secciones
+    document.getElementById('seccion-crear').style.display = 'none';
+    document.getElementById('seccion-buscar').style.display = 'none';
+    const seccionTecnicos = document.getElementById('seccion-tecnicos');
+    if (seccionTecnicos) {
+        seccionTecnicos.style.display = 'none';
+    }
 
-        if (data.success && data.pagos) {
-            return data.pagos;
-        }
-        return [];
-    } catch (error) {
-        console.error('Error al cargar pagos:', error);
-        return [];
+    // Mostrar la sección seleccionada
+    document.getElementById('seccion-' + seccion).style.display = 'block';
+
+    // Actualizar nav
+    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+
+    // Si es la sección de técnicos, cargar datos
+    if (seccion === 'tecnicos') {
+        cargarTecnicos();
     }
 }
 
-async function abrirModalRegistrarPago() {
-    if (!ordenActual) {
-        mostrarNotificacion('error', 'Error', 'No hay orden seleccionada');
+async function cargarTecnicos() {
+    try {
+        const response = await fetch(`${API_BASE}/admin/tecnicos`);
+        const data = await response.json();
+
+        if (data.success && data.tecnicos) {
+            renderizarListaTecnicos(data.tecnicos);
+            actualizarSelectTecnicos(data.tecnicos);
+        } else {
+            document.getElementById('lista-tecnicos').innerHTML = `
+                <div class="text-center text-muted py-3">
+                    <p>No hay técnicos registrados</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error al cargar técnicos:', error);
+        document.getElementById('lista-tecnicos').innerHTML = `
+            <div class="text-center text-danger py-3">
+                <p>Error al cargar técnicos</p>
+            </div>
+        `;
+    }
+}
+
+function renderizarListaTecnicos(tecnicos) {
+    if (tecnicos.length === 0) {
+        document.getElementById('lista-tecnicos').innerHTML = `
+            <div class="text-center text-muted py-3">
+                <p>No hay técnicos registrados</p>
+            </div>
+        `;
         return;
     }
 
-    const montoRestante = ordenActual.monto_restante || 0;
+    let html = '<div class="table-responsive"><table class="table table-hover">';
+    html += '<thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Estado</th><th>Registro</th></tr></thead><tbody>';
 
-    const modalHtml = `
-        <div class="text-center">
-            <h5 class="mb-4"><i class="fas fa-money-bill-wave me-2 text-success"></i>Registrar Pago Parcial</h5>
+    tecnicos.forEach(tecnico => {
+        const estadoBadge = tecnico.activo
+            ? '<span class="badge bg-success">Activo</span>'
+            : '<span class="badge bg-secondary">Inactivo</span>';
 
-            <div class="alert alert-info">
-                <p class="mb-1"><strong>Orden:</strong> #${String(ordenActual.numero_orden).padStart(6, '0')}</p>
-                <p class="mb-1"><strong>Total:</strong> $${(ordenActual.monto_total || 0).toLocaleString('es-CL')}</p>
-                <p class="mb-1"><strong>Ya abonado:</strong> $${(ordenActual.monto_abono || 0).toLocaleString('es-CL')}</p>
-                <p class="mb-0"><strong>Restante:</strong> <span class="text-primary fw-bold">$${montoRestante.toLocaleString('es-CL')}</span></p>
-            </div>
+        const fechaRegistro = tecnico.fecha_registro
+            ? new Date(tecnico.fecha_registro).toLocaleDateString('es-CL')
+            : 'N/A';
 
-            <form id="form-pago">
-                <div class="mb-3">
-                    <label class="form-label text-start w-100">Monto a Pagar ($)</label>
-                    <input type="number" class="form-control form-control-lg" id="pago-monto"
-                           min="1" max="${montoRestante}" step="100" required
-                           placeholder="Ingrese el monto">
-                </div>
+        html += `
+            <tr>
+                <td>${tecnico.nombre}</td>
+                <td>${tecnico.telefono}</td>
+                <td>${tecnico.email || 'N/A'}</td>
+                <td>${estadoBadge}</td>
+                <td>${fechaRegistro}</td>
+            </tr>
+        `;
+    });
 
-                <div class="mb-3">
-                    <label class="form-label text-start w-100">Método de Pago</label>
-                    <select class="form-select" id="pago-metodo" required>
-                        <option value="">Seleccione...</option>
-                        <option value="Efectivo">Efectivo</option>
-                        <option value="Transferencia">Transferencia Bancaria</option>
-                        <option value="Tarjeta">Tarjeta de Crédito/Débito</option>
-                        <option value="Webpay">Webpay</option>
-                        <option value="Otro">Otro</option>
-                    </select>
-                </div>
+    html += '</tbody></table></div>';
+    document.getElementById('lista-tecnicos').innerHTML = html;
+}
 
-                <div class="mb-3">
-                    <label class="form-label text-start w-100">Observaciones (Opcional)</label>
-                    <textarea class="form-control" id="pago-observaciones" rows="2"
-                              placeholder="Detalle del pago..."></textarea>
-                </div>
+function actualizarSelectTecnicos(tecnicos) {
+    const select = document.getElementById('asignar-tecnico-id');
+    if (!select) return;
 
-                <div class="mb-3">
-                    <label class="form-label text-start w-100">Registrador</label>
-                    <input type="text" class="form-control" id="pago-registrador"
-                           placeholder="Nombre del técnico/recepcionista">
-                </div>
+    // Mantener solo la primera opción
+    select.innerHTML = '<option value="">Seleccione un técnico...</option>';
 
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-success btn-lg">
-                        <i class="fas fa-check me-2"></i>Registrar Pago
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        Cancelar
-                    </button>
-                </div>
-            </form>
-        </div>
-    `;
-
-    // Insertar el HTML en el modal existente
-    document.getElementById('modal-contenido').innerHTML = modalHtml;
-    document.getElementById('modal-numero-orden').textContent = String(ordenActual.numero_orden).padStart(6, '0');
-
-    // Mostrar el modal
-    const modal = new bootstrap.Modal(document.getElementById('modalVerOrden'));
-    modal.show();
-
-    // Agregar event listener al formulario
-    document.getElementById('form-pago').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await registrarPagoParcial(ordenActual.id);
+    tecnicos.forEach(tecnico => {
+        if (tecnico.activo) {
+            const option = document.createElement('option');
+            option.value = tecnico.id;
+            option.textContent = `${tecnico.nombre} (${tecnico.telefono})`;
+            select.appendChild(option);
+        }
     });
 }
 
-async function registrarPagoParcial(ordenId) {
-    const monto = parseFloat(document.getElementById('pago-monto').value);
-    const metodoPago = document.getElementById('pago-metodo').value;
-    const observaciones = document.getElementById('pago-observaciones').value;
-    const registrador = document.getElementById('pago-registrador').value;
+async function registrarTecnico(event) {
+    event.preventDefault();
 
-    if (!monto || !metodoPago) {
-        mostrarNotificacion('warning', 'Advertencia', 'Complete el monto y método de pago');
+    const tecnicoData = {
+        nombre: document.getElementById('tecnico-nombre').value,
+        telefono: document.getElementById('tecnico-telefono').value,
+        email: document.getElementById('tecnico-email').value || null,
+        pin: document.getElementById('tecnico-pin').value
+    };
+
+    try {
+        const response = await fetch(`${API_BASE}/admin/tecnicos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tecnicoData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarNotificacion('success', 'Técnico Registrado', 'El técnico ha sido registrado exitosamente');
+            document.getElementById('form-tecnico').reset();
+            cargarTecnicos();
+        } else {
+            mostrarNotificacion('error', 'Error', data.error || 'Error al registrar técnico');
+        }
+    } catch (error) {
+        console.error('Error al registrar técnico:', error);
+        mostrarNotificacion('error', 'Error', 'Error de conexión');
+    }
+}
+
+async function asignarOrden() {
+    const ordenId = document.getElementById('asignar-orden-id').value;
+    const tecnicoId = document.getElementById('asignar-tecnico-id').value;
+
+    if (!ordenId || !tecnicoId) {
+        mostrarNotificacion('warning', 'Faltan Datos', 'Ingrese el número de orden y seleccione un técnico');
         return;
     }
 
     try {
-        mostrarLoading(true);
-
-        const response = await fetch(`${API_BASE}/registrar-pago`, {
+        const response = await fetch(`${API_BASE}/admin/asignar-orden`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 orden_id: ordenId,
-                monto: monto,
-                metodo_pago: metodoPago,
-                observaciones: observaciones || null,
-                registrador: registrador || null
+                tecnico_id: tecnicoId
             })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            mostrarNotificacion('success', 'Pago Registrado', data.mensaje);
-
-            // Actualizar orden actual
-            ordenActual = data.orden;
-
-            // Cerrar el modal actual y mostrar la orden actualizada
-            const modal = bootstrap.Modal.getInstance(document.getElementById('modalVerOrden'));
-            modal.hide();
-
-            setTimeout(() => {
-                mostrarOrdenConPagos(data.orden, data.historial_pagos);
-            }, 300);
-
+            mostrarNotificacion('success', 'Orden Asignada', 'La orden ha sido asignada exitosamente');
+            document.getElementById('asignar-orden-id').value = '';
+            document.getElementById('asignar-tecnico-id').value = '';
         } else {
-            mostrarNotificacion('error', 'Error', data.error || 'Error al registrar pago');
+            mostrarNotificacion('error', 'Error', data.error || 'Error al asignar orden');
         }
     } catch (error) {
-        console.error('Error al registrar pago:', error);
+        console.error('Error al asignar orden:', error);
         mostrarNotificacion('error', 'Error', 'Error de conexión');
-    } finally {
-        mostrarLoading(false);
     }
-}
-
-async function mostrarOrdenConPagos(orden, pagos) {
-    ordenActual = orden;
-    const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
-    const estadoClass = obtenerClaseEstado(orden.estado);
-
-    // Construir HTML de trabajos
-    let trabajosHtml = '';
-    if (orden.trabajo_frenos) trabajosHtml += `<li><strong>Frenos:</strong> ${orden.detalle_frenos || 'Sin detalle'}</li>`;
-    if (orden.trabajo_luces) trabajosHtml += `<li><strong>Luces:</strong> ${orden.detalle_luces || 'Sin detalle'}</li>`;
-    if (orden.trabajo_tren_delantero) trabajosHtml += `<li><strong>Tren Delantero:</strong> ${orden.detalle_tren_delantero || 'Sin detalle'}</li>`;
-    if (orden.trabajo_correas) trabajosHtml += `<li><strong>Correas:</strong> ${orden.detalle_correas || 'Sin detalle'}</li>`;
-    if (orden.trabajo_componentes) trabajosHtml += `<li><strong>Componentes:</strong> ${orden.detalle_componentes || 'Sin detalle'}</li>`;
-
-    if (!trabajosHtml) trabajosHtml = '<li>No hay trabajos seleccionados</li>';
-
-    // Construir HTML de pagos
-    let pagosHtml = '';
-    if (pagos && pagos.length > 0) {
-        pagos.forEach(pago => {
-            pagosHtml += `
-                <div class="card mb-2">
-                    <div class="card-body p-2">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>$${pago.monto.toLocaleString('es-CL')}</strong>
-                                <span class="badge bg-secondary ms-2">${pago.metodo_pago}</span>
-                                ${pago.registrador ? `<small class="text-muted d-block">por: ${pago.registrador}</small>` : ''}
-                            </div>
-                            <small class="text-muted">${new Date(pago.fecha_pago).toLocaleString('es-CL')}</small>
-                        </div>
-                        ${pago.observaciones ? `<small class="text-muted d-block mt-1">${pago.observaciones}</small>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-    } else {
-        pagosHtml = '<p class="text-muted text-center">No hay pagos registrados</p>';
-    }
-
-    // Firma
-    let firmaHtml = '';
-    if (orden.firma_imagen) {
-        firmaHtml = `
-            <div class="text-center mt-4">
-                <h6><i class="fas fa-signature me-2"></i>Firma del Cliente</h6>
-                <img src="${orden.firma_imagen}" alt="Firma del cliente" style="max-width: 300px; border: 1px solid #ddd; border-radius: 5px;">
-                <p class="small text-muted mt-2">Fecha de aprobación: ${orden.fecha_aprobacion || 'N/A'}</p>
-            </div>
-        `;
-    } else {
-        firmaHtml = `
-            <div class="alert alert-warning mt-4">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Esta orden aún no ha sido firmada por el cliente.
-            </div>
-        `;
-    }
-
-    const html = `
-        <div class="row">
-            <div class="col-md-6">
-                <h6 class="fw-bold"><i class="fas fa-building me-2"></i>INFORMACIÓN DEL TALLER</h6>
-                <p><strong>Empresa:</strong> Global Pro Automotriz</p>
-                <p><strong>Dirección:</strong> Padre Alberto Hurtado 3596, Pedro Aguirre Cerda</p>
-                <p><strong>Contactos:</strong> +56 9 8471 5405 / +56 9 3902 6185</p>
-
-                <hr>
-
-                <h6 class="fw-bold"><i class="fas fa-user me-2"></i>DATOS DEL CLIENTE</h6>
-                <p><strong>Nombre:</strong> ${orden.cliente_nombre || 'N/A'}</p>
-                <p><strong>R.U.T.:</strong> ${orden.cliente_rut || 'N/A'}</p>
-                <p><strong>Teléfono:</strong> ${orden.cliente_telefono || 'N/A'}</p>
-            </div>
-
-            <div class="col-md-6">
-                <h6 class="fw-bold"><i class="fas fa-car me-2"></i>DATOS DEL VEHÍCULO</h6>
-                <p><strong>Patente:</strong> <span style="font-size: 1.2rem; font-weight: bold; color: var(--gp-red);">${orden.patente_placa}</span></p>
-                <p><strong>Marca/Modelo:</strong> ${orden.marca || 'N/A'} ${orden.modelo || ''} (${orden.anio || 'N/A'})</p>
-
-                <hr>
-
-                <h6 class="fw-bold"><i class="fas fa-info-circle me-2"></i>ESTADO DE LA ORDEN</h6>
-                <p><span class="badge ${estadoClass} fs-6">${orden.estado}</span></p>
-            </div>
-        </div>
-
-        <hr>
-
-        <div class="row">
-            <div class="col-md-6">
-                <h6 class="fw-bold"><i class="fas fa-dollar-sign me-2"></i>VALORES</h6>
-                <div class="row text-center">
-                    <div class="col-4">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Total</small>
-                            <div class="h4">$${(orden.monto_total || 0).toLocaleString('es-CL')}</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-3 bg-success bg-opacity-10 rounded">
-                            <small class="text-muted">Pagado</small>
-                            <div class="h4 text-success">$${(orden.monto_abono || 0).toLocaleString('es-CL')}</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-3 ${orden.monto_restante <= 0 ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10'} rounded">
-                            <small class="text-muted">Restante</small>
-                            <div class="h4 ${orden.monto_restante <= 0 ? 'text-success' : 'text-warning'}">$${(orden.monto_restante || 0).toLocaleString('es-CL')}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <h6 class="fw-bold"><i class="fas fa-money-bill-wave me-2"></i>HISTORIAL DE PAGOS</h6>
-                <div style="max-height: 200px; overflow-y: auto;">
-                    ${pagosHtml}
-                </div>
-            </div>
-        </div>
-
-        <hr>
-
-        <div class="text-center">
-            ${orden.monto_restante > 0 ? `
-                <button onclick="abrirModalRegistrarPago()" class="btn btn-success btn-lg me-2">
-                    <i class="fas fa-plus me-2"></i>Registrar Pago
-                </button>
-            ` : `
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle me-2"></i>
-                    <strong>¡Pago Completado!</strong>
-                </div>
-            `}
-            <button onclick="generarPDFDesdeModal()" class="btn btn-primary btn-lg">
-                <i class="fas fa-file-pdf me-2"></i>Descargar PDF
-            </button>
-            <button class="btn btn-secondary btn-lg" data-bs-dismiss="modal">
-                <i class="fas fa-times me-2"></i>Cerrar
-            </button>
-        </div>
-
-        ${firmaHtml}
-    `;
-
-    document.getElementById('modal-contenido').innerHTML = html;
-    document.getElementById('modal-numero-orden').textContent = numeroFormateado;
-
-    const modal = new bootstrap.Modal(document.getElementById('modalVerOrden'));
-    modal.show();
 }

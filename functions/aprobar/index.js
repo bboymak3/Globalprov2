@@ -1,5 +1,5 @@
-// ===========================================
-// PÃGINA DE APROBACIÃ“N DE ORDEN
+// ============================================
+// PÁGINA DE APROBACIÓN DE ORDEN
 // Global Pro Automotriz
 // ============================================
 
@@ -11,7 +11,7 @@ export async function onRequestGet(context) {
     const token = url.searchParams.get('token');
 
     if (!token) {
-      return new Response(getErrorPage('Token no proporcionado', 'No se proporcionÃ³ un token vÃ¡lido'), {
+      return new Response(getErrorPage('Token no proporcionado', 'No se proporcionó un token válido'), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
       });
     }
@@ -22,7 +22,7 @@ export async function onRequestGet(context) {
     ).bind(token).first();
 
     if (!orden) {
-      return new Response(getErrorPage('Orden no encontrada', 'El enlace no es vÃ¡lido o ha expirado'), {
+      return new Response(getErrorPage('Orden no encontrada', 'El enlace no es válido o ha expirado'), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
       });
     }
@@ -59,13 +59,13 @@ function getErrorPage(title, message) {
 function getApprovedPage(orden) {
   const n = String(orden.numero_orden).padStart(6, '0');
   const firmaImg = orden.firma_imagen ? '<img src="' + orden.firma_imagen + '" style="max-width:200px;margin-top:20px;border:1px solid #ddd;border-radius:8px;">' : '';
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Aprobada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-green-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md"><div class="text-6xl mb-4">âœ…</div><h1 class="text-3xl font-black text-green-700 mb-2">Â¡Orden Aprobada!</h1><p class="text-gray-600 mb-4">Su firma ha sido guardada exitosamente.</p><div class="bg-green-50 rounded-xl p-4 mb-6"><p class="text-sm text-gray-600">Orden NÂ°</p><p class="text-2xl font-bold text-green-700">' + n + '</p><p class="text-sm text-gray-500 mt-2">Fecha: ' + (orden.fecha_aprobacion || 'N/A') + '</p></div>' + firmaImg + '<p class="text-sm text-gray-500 mt-6">Â¡Gracias por confiar en Global Pro Automotriz!</p></div></body></html>';
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Aprobada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-green-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md"><div class="text-6xl mb-4">✅</div><h1 class="text-3xl font-black text-green-700 mb-2">¡Orden Aprobada!</h1><p class="text-gray-600 mb-4">Su firma ha sido guardada exitosamente.</p><div class="bg-green-50 rounded-xl p-4 mb-6"><p class="text-sm text-gray-600">Orden N°</p><p class="text-2xl font-bold text-green-700">' + n + '</p><p class="text-sm text-gray-500 mt-2">Fecha: ' + (orden.fecha_aprobacion || 'N/A') + '</p></div>' + firmaImg + '<p class="text-sm text-gray-500 mt-6">¡Gracias por confiar en Global Pro Automotriz!</p></div></body></html>';
 }
 
 function getCancelledPage(orden) {
   const n = String(orden.numero_orden).padStart(6, '0');
   const motivo = orden.motivo_cancelacion || 'No especificado';
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Cancelada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-red-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md"><div class="text-8xl mb-4">âŒ</div><h1 class="text-3xl font-black text-red-700 mb-2">Orden Cancelada</h1><p class="text-gray-600 mb-4">Esta orden de trabajo ha sido cancelada.</p><div class="bg-red-50 rounded-xl p-4 mb-6"><p class="text-sm text-gray-600">Orden NÂ°</p><p class="text-2xl font-bold text-red-700">' + n + '</p><p class="text-xs text-gray-500 mt-2">Fecha: ' + (orden.fecha_cancelacion || 'N/A') + '</p></div><div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6"><p class="text-sm font-bold text-yellow-800">Motivo:</p><p class="text-sm text-yellow-700">' + motivo + '</p></div></div></body></html>';
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Cancelada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-red-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md"><div class="text-8xl mb-4">❌</div><h1 class="text-3xl font-black text-red-700 mb-2">Orden Cancelada</h1><p class="text-gray-600 mb-4">Esta orden de trabajo ha sido cancelada.</p><div class="bg-red-50 rounded-xl p-4 mb-6"><p class="text-sm text-gray-600">Orden N°</p><p class="text-2xl font-bold text-red-700">' + n + '</p><p class="text-xs text-gray-500 mt-2">Fecha: ' + (orden.fecha_cancelacion || 'N/A') + '</p></div><div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6"><p class="text-sm font-bold text-yellow-800">Motivo:</p><p class="text-sm text-yellow-700">' + motivo + '</p></div></div></body></html>';
 }
 
 function getApprovalPage(orden, token) {
@@ -111,16 +111,16 @@ function getApprovalPage(orden, token) {
   html += '<p class="text-blue-700 mt-2">Ha recibido una <strong>ORDEN DE TRABAJO</strong> de parte de <strong>GLOBAL PRO AUTOMOTRIZ</strong></p>';
   html += '</div>';
   html += '<div class="bg-gray-50 rounded-xl p-4 mb-6">';
-  html += '<h3 class="font-bold text-lg mb-3 text-gray-800">ðŸ“‹ InformaciÃ³n de la Orden</h3>';
+  html += '<h3 class="font-bold text-lg mb-3 text-gray-800">📋 Información de la Orden</h3>';
   html += '<div class="grid grid-cols-2 gap-3 text-sm">';
-  html += '<div><span class="text-gray-600">NÂ° Orden:</span><p class="font-bold text-red-700">' + n + '</p></div>';
+  html += '<div><span class="text-gray-600">N° Orden:</span><p class="font-bold text-red-700">' + n + '</p></div>';
   html += '<div><span class="text-gray-600">Patente:</span><p class="font-bold text-red-700">' + orden.patente_placa + '</p></div>';
   html += '<div><span class="text-gray-600">Fecha:</span><p class="font-bold">' + (orden.fecha_ingreso || 'N/A') + ' ' + (orden.hora_ingreso || '') + '</p></div>';
-  html += '<div><span class="text-gray-600">TÃ©cnico:</span><p class="font-bold">' + (orden.recepcionista || 'N/A') + '</p></div>';
+  html += '<div><span class="text-gray-600">Técnico:</span><p class="font-bold">' + (orden.recepcionista || 'N/A') + '</p></div>';
   html += '</div>';
   html += '</div>';
   html += '<div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-4 mb-6 text-white">';
-  html += '<h3 class="font-bold text-lg mb-3">ðŸ’° Valores</h3>';
+  html += '<h3 class="font-bold text-lg mb-3">💰 Valores</h3>';
   html += '<div class="grid grid-cols-3 gap-3 text-center">';
   html += '<div class="bg-white/20 rounded-lg p-3">';
   html += '<p class="text-xs opacity-80">Total</p>';
@@ -137,11 +137,11 @@ function getApprovalPage(orden, token) {
   html += '</div>';
   html += '</div>';
   html += '<div class="mb-6">';
-  html += '<h3 class="font-bold text-lg mb-3 text-gray-800">ðŸ”§ Trabajos Seleccionados</h3>';
+  html += '<h3 class="font-bold text-lg mb-3 text-gray-800">🔧 Trabajos Seleccionados</h3>';
   html += '<ul class="space-y-2 text-sm">' + trabajosHtml + '</ul>';
   html += '</div>';
   html += '<div class="mb-6">';
-  html += '<h3 class="font-bold text-lg mb-3 text-gray-800">âœï¸ Firma para Aprobar</h3>';
+  html += '<h3 class="font-bold text-lg mb-3 text-gray-800">✍️ Firma para Aprobar</h3>';
   html += '<div class="signature-container">';
   html += '<button type="button" onclick="limpiarFirma()" class="btn-clear">X Borrar</button>';
   html += '<canvas id="sig-canvas" height="250"></canvas>';
@@ -151,14 +151,14 @@ function getApprovalPage(orden, token) {
   html += '<div class="bg-gray-100 rounded-lg p-4 mb-6 text-sm text-gray-700">';
   html += '<p class="mb-2"><strong>Al firmar usted autoriza:</strong></p>';
   html += '<ul class="list-disc list-inside space-y-1">';
-  html += '<li>La intervenciÃ³n del vehÃ­culo</li>';
+  html += '<li>La intervención del vehículo</li>';
   html += '<li>Pruebas de carretera necesarias</li>';
   html += '<li>La empresa no se responsabiliza por objetos no declarados</li>';
   html += '</ul>';
   html += '</div>';
   html += '<div class="grid grid-cols-2 gap-4">';
-  html += '<button onclick="cancelarOrden()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105">âŒ Cancelar</button>';
-  html += '<button onclick="aprobarOrden()" id="btnAprobar" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105">âœ… Aceptar y Firmar</button>';
+  html += '<button onclick="cancelarOrden()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105">❌ Cancelar</button>';
+  html += '<button onclick="aprobarOrden()" id="btnAprobar" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105">✅ Aceptar y Firmar</button>';
   html += '</div>';
   html += '</div>';
   html += '<div class="bg-white rounded-b-2xl shadow-2xl p-4 text-center text-sm text-gray-600">';
@@ -248,19 +248,19 @@ function getApprovalPage(orden, token) {
   html += '      mostrarExito(data.orden);';
   html += '    } else {';
   html += '      alert("Error al aprobar: " + data.error);';
-  html += '      btn.innerHTML = "âœ… Aceptar y Firmar";';
+  html += '      btn.innerHTML = "✅ Aceptar y Firmar";';
   html += '      btn.disabled = false;';
   html += '    }';
   html += '  } catch (error) {';
   html += '    console.error("Error:", error);';
-  html += '    alert("Error de conexiÃ³n: " + error.message);';
-  html += '    btn.innerHTML = "âœ… Aceptar y Firmar";';
+  html += '    alert("Error de conexión: " + error.message);';
+  html += '    btn.innerHTML = "✅ Aceptar y Firmar";';
   html += '    btn.disabled = false;';
   html += '  }';
   html += '}';
   html += 'async function cancelarOrden() {';
-  html += '  var motivo = prompt("Â¿CuÃ¡l es el motivo de la cancelaciÃ³n?");';
-  html += '  if (!confirm("Â¿EstÃ¡ seguro de cancelar esta orden de trabajo?")) return;';
+  html += '  var motivo = prompt("¿Cuál es el motivo de la cancelación?");';
+  html += '  if (!confirm("¿Está seguro de cancelar esta orden de trabajo?")) return;';
   html += '  try {';
   html += '    var response = await fetch("/api/cancelar-orden", {';
   html += '      method: "POST",';
@@ -275,7 +275,7 @@ function getApprovalPage(orden, token) {
   html += '    }';
   html += '  } catch (error) {';
   html += '    console.error("Error:", error);';
-  html += '    alert("Error de conexiÃ³n");';
+  html += '    alert("Error de conexión");';
   html += '  }';
   html += '}';
   html += 'function mostrarExito(orden) {';
@@ -288,17 +288,17 @@ function getApprovalPage(orden, token) {
   html += '  successHTML += "</head>";';
   html += '  successHTML += "<body class=\\"bg-green-100 flex items-center justify-center min-h-screen p-4\\">";';
   html += '  successHTML += "<div class=\\"bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center\\">";';
-  html += '  successHTML += "<div class=\\"text-8xl mb-4\\">âœ…</div>";';
-  html += '  successHTML += "<h1 class=\\"text-3xl font-black text-green-700 mb-2\\">Â¡Orden Aprobada!</h1>";';
+  html += '  successHTML += "<div class=\\"text-8xl mb-4\\">✅</div>";';
+  html += '  successHTML += "<h1 class=\\"text-3xl font-black text-green-700 mb-2\\">¡Orden Aprobada!</h1>";';
   html += '  successHTML += "<p class=\\"text-gray-600 mb-6\\">Su firma ha sido guardada exitosamente.</p>";';
   html += '  successHTML += "<div class=\\"bg-green-50 rounded-xl p-4 mb-6\\">";';
-  html += '  successHTML += "<p class=\\"text-sm text-gray-600\\">Orden NÂ°</p>";';
+  html += '  successHTML += "<p class=\\"text-sm text-gray-600\\">Orden N°</p>";';
   html += '  successHTML += "<p class=\\"text-2xl font-bold text-green-700\\">" + numeroOrden + "</p>";';
   html += '  successHTML += "<p class=\\"text-sm text-gray-600 mt-2\\">Patente: <strong>" + orden.patente_placa + "</strong></p>";';
   html += '  successHTML += "</div>";';
-  html += '  successHTML += "<a href=\\"" + whatsappUrl + "\\" target=\\"_blank\\" class=\\"block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">ðŸ“± Enviar ConfirmaciÃ³n por WhatsApp</a>";';
-  html += '  successHTML += "<button onclick=\\"cerrarPagina()\\" class=\\"w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">âœ… Finalizar</button>";';
-  html += '  successHTML += "<p class=\\"text-sm text-gray-500 mt-4\\">Â¡Gracias por confiar en Global Pro Automotriz!</p>";';
+  html += '  successHTML += "<a href=\\"" + whatsappUrl + "\\" target=\\"_blank\\" class=\\"block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">📱 Enviar Confirmación por WhatsApp</a>";';
+  html += '  successHTML += "<button onclick=\\"cerrarPagina()\\" class=\\"w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">✅ Finalizar</button>";';
+  html += '  successHTML += "<p class=\\"text-sm text-gray-500 mt-4\\">¡Gracias por confiar en Global Pro Automotriz!</p>";';
   html += '  successHTML += "</div>";';
   html += '  successHTML += "<script>";';
   html += '  successHTML += "function cerrarPagina() {";';
@@ -319,11 +319,11 @@ function getApprovalPage(orden, token) {
   html += '  cancelHTML += "</head>";';
   html += '  cancelHTML += "<body class=\\"bg-red-100 flex items-center justify-center min-h-screen p-4\\">";';
   html += '  cancelHTML += "<div class=\\"bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center\\">";';
-  html += '  cancelHTML += "<div class=\\"text-8xl mb-4\\">âŒ</div>";';
+  html += '  cancelHTML += "<div class=\\"text-8xl mb-4\\">❌</div>";';
   html += '  cancelHTML += "<h1 class=\\"text-3xl font-black text-red-700 mb-2\\">Orden Cancelada</h1>";';
   html += '  cancelHTML += "<p class=\\"text-gray-600 mb-4\\">Esta orden de trabajo ha sido cancelada.</p>";';
   html += '  cancelHTML += "<div class=\\"bg-red-50 rounded-xl p-4 mb-6\\">";';
-  html += '  cancelHTML += "<p class=\\"text-sm text-gray-600\\">Orden NÂ°</p>";';
+  html += '  cancelHTML += "<p class=\\"text-sm text-gray-600\\">Orden N°</p>";';
   html += '  cancelHTML += "<p class=\\"text-2xl font-bold text-red-700\\">" + numeroOrden + "</p>";';
   html += '  cancelHTML += "<p class=\\"text-xs text-gray-500 mt-2\\">Fecha: " + (orden.fecha_cancelacion || "N/A") + "</p>";';
   html += '  cancelHTML += "</div>";';
