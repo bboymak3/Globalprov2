@@ -49,13 +49,34 @@ export async function onRequestPost(context) {
       });
     }
 
+    // Verificar que la orden no esté ya asignada
+    const asignacionExistente = await env.DB.prepare(
+      "SELECT id FROM AsignacionesTecnico WHERE orden_id = ?"
+    ).bind(data.orden_id).first();
+
+    if (asignacionExistente) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'La orden ya está asignada a un técnico'
+      }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
+
     // Asignar orden al técnico
     await env.DB.prepare(`
       UPDATE OrdenesTrabajo
       SET tecnico_asignado_id = ?,
-          estado = 'en_proceso'
+          estado_trabajo = 'Pendiente Visita'
       WHERE id = ?
     `).bind(data.tecnico_id, data.orden_id).run();
+
+    // Registrar asignación
+    await env.DB.prepare(`
+      INSERT INTO AsignacionesTecnico (orden_id, tecnico_id, asignado_por)
+      VALUES (?, ?, ?)
+    `).bind(data.orden_id, data.tecnico_id, 'Admin').run();
 
     return new Response(JSON.stringify({
       success: true,
