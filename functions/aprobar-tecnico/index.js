@@ -202,8 +202,12 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = nul
       'Al firmar, usted autoriza los trabajos indicados y sus montos.</p>' +
       '</div>' +
       '<div class="card mb-4">' +
+      '<div class="card-header">' +
+      '<h6 class="mb-0"><i class="fas fa-signature me-2"></i>Firma del Cliente</h6>' +
+      '</div>' +
       '<div class="card-body">' +
-      '<canvas id="firma-canvas" class="signature-canvas w-100" style="height: 200px; border: 2px dashed #ccc; border-radius: 10px;"></canvas>' +
+      '<p class="text-muted">Utilice el mouse o toque la pantalla para firmar en el área a continuación:</p>' +
+      '<canvas id="firma-canvas" style="width: 100%; height: 200px; border: 2px dashed #ccc; border-radius: 10px;"></canvas>' +
       '<button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="limpiarFirma()">' +
       '<i class="fas fa-eraser me-2"></i>Limpiar Firma' +
       '</button>' +
@@ -282,7 +286,7 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = nul
     'if (canvas) {' +
     'const rect = canvas.getBoundingClientRect();' +
     'canvas.width = rect.width;' +
-    'canvas.height = rect.height;' +
+    'canvas.height = 200;' +
     'ctx = canvas.getContext("2d");' +
     'ctx.strokeStyle = "#000";' +
     'ctx.lineWidth = 2;' +
