@@ -301,31 +301,19 @@ function renderizarAcciones(orden) {
             `;
             break;
         case 'Completada':
-            if (!orden.firma_imagen) {
-                html = `
-                    <button class="btn btn-firma action-btn" onclick="enviarLinkFirma()">
-                        <i class="fab fa-whatsapp me-2"></i>Enviar Link para Firma
+            html = `
+                <div class="text-center">
+                    <p class="text-success"><i class="fas fa-check-circle me-2"></i>Trabajo completado</p>
+                    <button class="btn btn-success action-btn" onclick="cerrarOrden()">
+                        <i class="fas fa-lock me-2"></i>Cerrar Orden
                     </button>
-                    <button class="btn btn-outline-secondary action-btn mt-2" onclick="copiarLinkFirma()">
-                        <i class="fas fa-copy me-2"></i>Copiar Link de Firma
-                    </button>
-                `;
-            } else {
-                html = `
-                    <div class="text-center">
-                        <p class="text-success"><i class="fas fa-check-circle me-2"></i>Firma registrada por el cliente</p>
-                        <button class="btn btn-success action-btn" onclick="cerrarOrden()">
-                            <i class="fas fa-lock me-2"></i>Cerrar Orden
-                        </button>
-                    </div>
-                `;
-            }
+                </div>
+            `;
             break;
-        case 'Aprobada':
         case 'Usuario Satisfecho':
             html = `
                 <div class="text-center">
-                    <p class="text-success"><i class="fas fa-check-double me-2"></i>${orden.estado_trabajo === 'Usuario Satisfecho' ? 'Cliente satisfecho' : 'Orden aprobada por cliente'}</p>
+                    <p class="text-success"><i class="fas fa-check-double me-2"></i>Cliente satisfecho con el trabajo</p>
                     <button class="btn btn-success action-btn" onclick="cerrarOrden()">
                         <i class="fas fa-lock me-2"></i>Cerrar Orden
                     </button>
@@ -770,6 +758,13 @@ function copiarLinkFirmaModal(link) {
 async function cerrarOrden() {
     if (!ordenActual || !tecnicoActual) {
         mostrarNotificacion('error', 'Error', 'No se puede cerrar la orden en este momento');
+        return;
+    }
+
+    // Verificar si hay firma del cliente
+    if (!ordenActual.firma_imagen) {
+        mostrarNotificacion('warning', 'Firma requerida', 'Se requiere firma del cliente para cerrar la orden. Enviando link...');
+        enviarLinkFirma();
         return;
     }
 
