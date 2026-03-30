@@ -185,11 +185,10 @@ async function guardarOrden() {
         
         // Montos
         monto_total: parseFloat(document.getElementById('monto-total').value) || 0,
-        tiene_abono: document.getElementById('tiene-abono').checked ? 1 : 0,
         monto_abono: document.getElementById('tiene-abono').checked ? (parseFloat(document.getElementById('monto-abono').value) || 0) : 0,
         metodo_pago: document.getElementById('tiene-abono').checked ? document.getElementById('metodo-pago').value : null
     };
-    
+
     // Calcular restante
     ordenData.monto_restante = ordenData.monto_total - ordenData.monto_abono;
     
