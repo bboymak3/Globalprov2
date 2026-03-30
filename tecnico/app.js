@@ -248,6 +248,13 @@ function mostrarOrdenEnModal(orden) {
     // Mostrar notas de cierre si existen
     document.getElementById('modal-notas').innerHTML = orden.notas ? `<p>${orden.notas.replace(/\n/g, '<br>')}</p>` : '<p class="text-muted">Sin notas de cierre</p>';
 
+    // Mostrar flag de orden cerrada según estado_trabajo
+    const estaCerrada = orden.estado_trabajo === 'Cerrada';
+    const checkboxCerrada = document.getElementById('modal-orden-cerrada');
+    if (checkboxCerrada) {
+        checkboxCerrada.checked = estaCerrada;
+    }
+
     // Renderizar acciones según estado
     renderizarAcciones(orden);
 
