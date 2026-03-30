@@ -280,7 +280,9 @@ function getApprovalPage(orden, token) {
   html += '}';
   html += 'function mostrarExito(orden) {';
   html += '  var numeroOrden = String(orden.numero_orden).padStart(6, "0");';
-  html += '  var whatsappUrl = "https://wa.me/56939026185?text=" + encodeURIComponent("Hola, he aprobado la orden de trabajo #" + numeroOrden + ". Mi patente es: " + orden.patente_placa);';
+  html += '  var verFacturaUrl = window.location.origin + "/ver-ot?token=" + orden.token;';
+  html += '  var mensajeWhatsapp = "Hola, he aprobado la orden de trabajo #" + numeroOrden + ".\\n\\nPuede ver y descargar su factura en línea aquí: " + verFacturaUrl;';
+  html += '  var whatsappUrl = "https://wa.me/56939026185?text=" + encodeURIComponent(mensajeWhatsapp);';
   html += '  var successHTML = "";';
   html += '  successHTML += "<!DOCTYPE html>";';
   html += '  successHTML += "<html><head><meta charset=\\"UTF-8\\"><title>Orden Aprobada</title>";';
@@ -296,7 +298,8 @@ function getApprovalPage(orden, token) {
   html += '  successHTML += "<p class=\\"text-2xl font-bold text-green-700\\">" + numeroOrden + "</p>";';
   html += '  successHTML += "<p class=\\"text-sm text-gray-600 mt-2\\">Patente: <strong>" + orden.patente_placa + "</strong></p>";';
   html += '  successHTML += "</div>";';
-  html += '  successHTML += "<a href=\\"" + whatsappUrl + "\\" target=\\"_blank\\" class=\\"block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">📱 Enviar Confirmación por WhatsApp</a>";';
+  html += '  successHTML += "<a href=\\"" + verFacturaUrl + "\\" target=\\"_blank\\" class=\\"block w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">📄 Ver Factura en Línea</a>";';
+  html += '  successHTML += "<a href=\\"" + whatsappUrl + "\\" target=\\"_blank\\" class=\\"block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">📱 Enviar Factura por WhatsApp</a>";';
   html += '  successHTML += "<button onclick=\\"cerrarPagina()\\" class=\\"w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">✅ Finalizar</button>";';
   html += '  successHTML += "<p class=\\"text-sm text-gray-500 mt-4\\">¡Gracias por confiar en Global Pro Automotriz!</p>";';
   html += '  successHTML += "</div>";';

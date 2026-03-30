@@ -545,8 +545,8 @@ function verPDFEnLinea() {
 
 async function generarPDF(orden) {
     const { jsPDF } = window.jspdf;
-    // Usar landscape (horizontal) para más espacio
-    const doc = new jsPDF('l', 'mm', 'a4');
+    // Usar portrait (vertical)
+    const doc = new jsPDF('p', 'mm', 'a4');
 
     const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -554,19 +554,20 @@ async function generarPDF(orden) {
     const leftMargin = 10;
     let yPos = 15;
 
+    // Número de orden pequeño en esquina superior derecha
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text(`OT #${numeroFormateado}`, pageWidth - 15, 10, { align: 'right' });
+
     // Título
     doc.setFontSize(16);
     doc.setTextColor(168, 0, 0);
     doc.text('ORDEN DE TRABAJO', pageWidth / 2, yPos, { align: 'center' });
     yPos += 8;
 
-    doc.setFontSize(12);
-    doc.text(`N° ${numeroFormateado}`, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 6;
-
     doc.setFontSize(10);
     doc.text('GLOBAL PRO AUTOMOTRIZ', pageWidth / 2, yPos, { align: 'center' });
-    yPos += 12;
+    yPos += 10;
 
     // Información del Taller
     doc.setTextColor(0, 0, 0);

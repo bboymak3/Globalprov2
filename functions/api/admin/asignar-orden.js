@@ -1,5 +1,5 @@
 // ============================================
-// API: ASIGNAR ORDEN A TÉCNICO (ADMIN)
+// API: ASIGNAR ORDEN A TÉCNICO
 // Global Pro Automotriz
 // ============================================
 
@@ -19,15 +19,15 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Verificar que la orden existe
+    // Verificar que la orden existe y está aprobada
     const orden = await env.DB.prepare(
-      "SELECT id, tecnico_asignado_id FROM OrdenesTrabajo WHERE id = ?"
+      "SELECT id FROM OrdenesTrabajo WHERE id = ? AND estado = 'Aprobada'"
     ).bind(data.orden_id).first();
 
     if (!orden) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Orden no encontrada'
+        error: 'Orden no encontrada o no está aprobada'
       }), {
         headers: { 'Content-Type': 'application/json' },
         status: 404
@@ -42,48 +42,24 @@ export async function onRequestPost(context) {
     if (!tecnico) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Técnico no encontrado o inactivo'
+        error: 'Técnico no encontrado o no está activo'
       }), {
         headers: { 'Content-Type': 'application/json' },
         status: 404
       });
     }
 
-    // Si ya tenía un técnico asignado, eliminar la asignación anterior
-    if (orden.tecnico_asignado_id) {
-      await env.DB.prepare(
-        "DELETE FROM AsignacionesTecnico WHERE orden_id = ?"
-      ).bind(data.orden_id).run();
-    }
-
-    // Crear nueva asignación
-    await env.DB.prepare(`
-      INSERT INTO AsignacionesTecnico (orden_id, tecnico_id, asignado_por)
-      VALUES (?, ?, 'Admin')
-    `).bind(data.orden_id, data.tecnico_id).run();
-
-    // Actualizar orden
+    // Asignar orden al técnico
     await env.DB.prepare(`
       UPDATE OrdenesTrabajo
-      SET tecnico_asignado_id = ?, estado_trabajo = 'Pendiente Visita'
+      SET tecnico_asignado_id = ?,
+          estado = 'en_proceso'
       WHERE id = ?
     `).bind(data.tecnico_id, data.orden_id).run();
 
-    // Registrar en seguimiento
-    await env.DB.prepare(`
-      INSERT INTO SeguimientoTrabajo (orden_id, tecnico_id, estado_anterior, estado_nuevo, observaciones)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind(
-      data.orden_id,
-      data.tecnico_id,
-      orden.estado_trabajo || 'Sin asignar',
-      'Pendiente Visita',
-      'Orden asignada a técnico: ' + tecnico.nombre
-    ).run();
-
     return new Response(JSON.stringify({
       success: true,
-      mensaje: 'Orden asignada correctamente'
+      mensaje: `Orden asignada al técnico ${tecnico.nombre}`
     }), {
       headers: { 'Content-Type': 'application/json' }
     });

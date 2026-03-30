@@ -146,9 +146,14 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '<div class="container py-4">' +
     '<div class="d-flex justify-content-between align-items-center mb-4 no-print">' +
     '<h2 class="mb-0">Orden de Trabajo #' + numeroFormateado + '</h2>' +
-    '<button class="btn btn-primary" onclick="window.print()">' +
-    '<i class="fas fa-print me-2"></i>Imprimir / Guardar PDF' +
+    '<div class="d-flex gap-2">' +
+    '<button class="btn btn-primary" onclick="descargarPDF()">' +
+    '<i class="fas fa-download me-2"></i>Descargar PDF' +
     '</button>' +
+    '<button class="btn btn-secondary" onclick="window.print()">' +
+    '<i class="fas fa-print me-2"></i>Imprimir' +
+    '</button>' +
+    '</div>' +
     '</div>' +
     '<div class="ot-card card">' +
     '<div class="card-header bg-danger text-white">' +
@@ -231,6 +236,75 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '<footer class="text-center py-3 text-muted no-print">' +
     '<small>Generado el ' + new Date().toLocaleString('es-CL') + '</small>' +
     '</footer>' +
+    '<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>' +
+    '<script>' +
+    'function descargarPDF() {' +
+    '  const { jsPDF } = window.jspdf;' +
+    '  const doc = new jsPDF("p", "mm", "a4");' +
+    '  const ordenData = ' + JSON.stringify(orden) + ';' +
+    '  const numeroFormateado = "' + numeroFormateado + '";' +
+    '  const pageWidth = doc.internal.pageSize.getWidth();' +
+    '  const pageHeight = doc.internal.pageSize.getHeight();' +
+    '  const leftMargin = 10;' +
+    '  let yPos = 15;' +
+    '  doc.setFontSize(8);' +
+    '  doc.setTextColor(128, 128, 128);' +
+    '  doc.text("OT #" + numeroFormateado, pageWidth - 15, 10, { align: "right" });' +
+    '  doc.setFontSize(16);' +
+    '  doc.setTextColor(168, 0, 0);' +
+    '  doc.text("ORDEN DE TRABAJO", pageWidth / 2, yPos, { align: "center" });' +
+    '  yPos += 8;' +
+    '  doc.setFontSize(10);' +
+    '  doc.text("GLOBAL PRO AUTOMOTRIZ", pageWidth / 2, yPos, { align: "center" });' +
+    '  yPos += 10;' +
+    '  doc.setTextColor(0, 0, 0);' +
+    '  doc.setFontSize(9);' +
+    '  doc.setFont(undefined, "bold");' +
+    '  doc.text("1. INFORMACIÓN DEL TALLER", leftMargin, yPos);' +
+    '  yPos += 6;' +
+    '  doc.setFont(undefined, "normal");' +
+    '  doc.setFontSize(7);' +
+    '  doc.text("Empresa: Global Pro Automotriz", leftMargin, yPos); yPos += 4;' +
+    '  doc.text("Dirección: Padre Alberto Hurtado 3596, Pedro Aguirre Cerda", leftMargin, yPos); yPos += 4;' +
+    '  doc.text("Contactos: +56 9 8471 5405 / +56 9 3902 6185", leftMargin, yPos); yPos += 10;' +
+    '  doc.setFontSize(9);' +
+    '  doc.setFont(undefined, "bold");' +
+    '  doc.text("2. DATOS DEL CLIENTE", leftMargin, yPos);' +
+    '  yPos += 6;' +
+    '  doc.setFont(undefined, "normal");' +
+    '  doc.setFontSize(7);' +
+    '  doc.text("Cliente: " + (ordenData.cliente_nombre || "N/A"), leftMargin, yPos); yPos += 4;' +
+    '  doc.text("RUT: " + (ordenData.cliente_rut || "N/A"), leftMargin, yPos); yPos += 4;' +
+    '  doc.text("Fecha Ingreso: " + (ordenData.fecha_ingreso || "N/A"), leftMargin, yPos); yPos += 10;' +
+    '  doc.setFontSize(9);' +
+    '  doc.setFont(undefined, "bold");' +
+    '  doc.text("3. DATOS DEL VEHÍCULO", leftMargin, yPos);' +
+    '  yPos += 6;' +
+    '  doc.setFont(undefined, "normal");' +
+    '  doc.setFontSize(7);' +
+    '  doc.text("Patente: " + (ordenData.patente_placa || "N/A"), leftMargin, yPos); yPos += 4;' +
+    '  doc.text("Marca/Modelo: " + (ordenData.marca || "N/A") + " " + (ordenData.modelo || ""), leftMargin, yPos); yPos += 10;' +
+    '  doc.setFontSize(9);' +
+    '  doc.setFont(undefined, "bold");' +
+    '  doc.text("4. VALORES", leftMargin, yPos);' +
+    '  yPos += 6;' +
+    '  doc.setFont(undefined, "normal");' +
+    '  doc.setFontSize(7);' +
+    '  doc.text("Total: $" + ((ordenData.monto_total || 0).toLocaleString("es-CL")), leftMargin, yPos); yPos += 4;' +
+    '  doc.text("Abono: $" + ((ordenData.monto_abono || 0).toLocaleString("es-CL")), leftMargin, yPos); yPos += 4;' +
+    '  doc.text("Restante: $" + ((ordenData.monto_restante || 0).toLocaleString("es-CL")), leftMargin, yPos); yPos += 10;' +
+    '  if (ordenData.firma_imagen) {' +
+    '    try {' +
+    '      doc.text("Firma del Cliente:", leftMargin, yPos); yPos += 4;' +
+    '      doc.addImage(ordenData.firma_imagen, "PNG", leftMargin, yPos, 40, 25);' +
+    '    } catch(e) {}' +
+    '  }' +
+    '  doc.setFontSize(6);' +
+    '  doc.setTextColor(128, 128, 128);' +
+    '  doc.text("Generado: " + new Date().toLocaleString("es-CL"), pageWidth / 2, pageHeight - 10, { align: "center" });' +
+    '  doc.save("OT-" + numeroFormateado + "-" + (ordenData.patente_placa || "N/A") + ".pdf");' +
+    '}' +
+    '<\/script>' +
     '</div>' +
     '</body>' +
     '</html>';
