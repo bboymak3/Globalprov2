@@ -304,8 +304,8 @@ function renderizarAcciones(orden) {
             html = `
                 <div class="text-center">
                     <p class="text-success"><i class="fas fa-check-circle me-2"></i>Trabajo completado</p>
-                    <button class="btn btn-success action-btn" onclick="cerrarOrden()">
-                        <i class="fas fa-lock me-2"></i>Cerrar Orden
+                    <button class="btn btn-success action-btn" onclick="aceptarYCerrarOrden()">
+                        <i class="fas fa-check me-2"></i>Aceptar y Cerrar Orden
                     </button>
                 </div>
             `;
@@ -643,19 +643,28 @@ async function generarTokenFirma() {
     }
 }
 
-function enviarLinkFirma() {
+function enviarLinkFirma(notasCierre = null, pagoCompletado = null, metodoPago = null) {
     generarTokenFirma().then(token => {
         if (!token) return;
 
-        const linkFirma = `${window.location.origin}/aprobar-tecnico?token=${token}`;
-        const mensajeCompleto = `Hola, su orden de trabajo #${String(ordenActual.numero_orden).padStart(6,'0')} está lista para su firma.\n` +
+        let linkFirma = `${window.location.origin}/aprobar-tecnico?token=${token}`;
+        if (notasCierre) linkFirma += `&notas=${encodeURIComponent(notasCierre)}`;
+        if (pagoCompletado !== null) linkFirma += `&pago_completado=${pagoCompletado}`;
+        if (metodoPago) linkFirma += `&metodo_pago=${encodeURIComponent(metodoPago)}`;
+
+        let mensajeCompleto = `Hola, su orden de trabajo #${String(ordenActual.numero_orden).padStart(6,'0')} está lista para su aceptación final.\n` +
             `Resumen:\n` +
             `Cliente: ${ordenActual.cliente_nombre || 'N/A'}\n` +
             `Patente: ${ordenActual.patente_placa || 'N/A'}\n` +
             `Trabajo: ${ordenActual.trabajo_frenos ? 'Frenos ' : ''}${ordenActual.trabajo_luces ? 'Luces ' : ''}${ordenActual.trabajo_tren_delantero ? 'Tren delantero ' : ''}${ordenActual.trabajo_correas ? 'Correas ' : ''}${ordenActual.trabajo_componentes ? 'Componentes ' : ''}\n` +
             `Monto total: $${Number(ordenActual.monto_total || 0).toFixed(2)}\n` +
-            `Restante: $${Number(ordenActual.monto_restante || 0).toFixed(2)}\n` +
-            `Firma en: ${linkFirma}`;
+            `Restante: $${Number(ordenActual.monto_restante || 0).toFixed(2)}\n`;
+
+        if (notasCierre) {
+            mensajeCompleto += `Notas del técnico: ${notasCierre}\n`;
+        }
+
+        mensajeCompleto += `Por favor ingrese al siguiente link para revisar y firmar la aceptación:\n${linkFirma}`;
 
         // Abrir WhatsApp si teléfono cliente existe
         if (ordenActual && ordenActual.cliente_telefono) {
@@ -755,19 +764,13 @@ function copiarLinkFirmaModal(link) {
     });
 }
 
-async function cerrarOrden() {
+async function aceptarYCerrarOrden() {
     if (!ordenActual || !tecnicoActual) {
-        mostrarNotificacion('error', 'Error', 'No se puede cerrar la orden en este momento');
+        mostrarNotificacion('error', 'Error', 'No se puede procesar la orden en este momento');
         return;
     }
 
-    // Verificar si hay firma del cliente
-    if (!ordenActual.firma_imagen) {
-        mostrarNotificacion('warning', 'Firma requerida', 'Se requiere firma del cliente para cerrar la orden. Enviando link...');
-        enviarLinkFirma();
-        return;
-    }
-
+    // Pedir información de cierre al técnico
     const notasCierre = prompt('Agregar notas de cierre (opcional)');
 
     const pagoCompletado = confirm('¿El cliente terminó de cancelar?');
@@ -797,47 +800,14 @@ async function cerrarOrden() {
 
     const notasFinales = [notasCierre, notaPago, notaSaldo].filter(Boolean).join(' | ');
 
-    try {
-        const response = await fetch(`${API_BASE}/cerrar-orden`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                orden_id: ordenActual.id,
-                tecnico_id: tecnicoActual.id,
-                notas_cierre: notasFinales,
-                pago_completado: pagoCompletado,
-                metodo_pago: metodoPago
-            })
-        });
+    // Guardar temporalmente las notas para usar en la firma
+    ordenActual.notas_cierre_temp = notasFinales;
+    ordenActual.pago_completado_temp = pagoCompletado;
+    ordenActual.metodo_pago_temp = metodoPago;
 
-        const data = await response.json();
-
-        if (!data.success) {
-            mostrarNotificacion('error', 'No se pudo cerrar', data.error || 'Error al cerrar la orden');
-            return;
-        }
-
-        mostrarNotificacion('success', 'Orden cerrada', 'La orden ha sido cerrada con éxito');
-
-        // Refrescar datos y pestañas
-        ordenActual.estado_trabajo = 'Cerrada';
-        ordenActual.estado = 'Aprobada';
-        ordenActual.notas = data.notas || notasFinales;
-        ordenActual.pagado = pagoCompletado ? 1 : 0;
-        ordenActual.metodo_pago = metodoPago;
-        ordenarMontoRestante();
-        mostrarOrdenEnModal(ordenActual);
-        cargarOrdenes();
-
-        // Enviar resumen final por WhatsApp (si hay teléfono de cliente)
-        if (ordenActual.cliente_telefono) {
-            enviarResumenWhatsApp();
-        }
-
-    } catch (error) {
-        console.error('Error al cerrar orden:', error);
-        mostrarNotificacion('error', 'Error', 'No se pudo cerrar la orden');
-    }
+    // Enviar link para firma con la información
+    mostrarNotificacion('info', 'Enviando link', 'Enviando link de aceptación al cliente...');
+    enviarLinkFirma(notasFinales, pagoCompletado, metodoPago);
 }
 
 function ordenarMontoRestante() {

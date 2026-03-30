@@ -2,6 +2,9 @@ export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const token = url.searchParams.get('token');
+  const notas = url.searchParams.get('notas');
+  const pagoCompletado = url.searchParams.get('pago_completado') === 'true';
+  const metodoPago = url.searchParams.get('metodo_pago');
 
   if (!token) {
     return new Response('Token no proporcionado', { status: 400 });
@@ -29,8 +32,8 @@ export async function onRequestGet(context) {
     const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
     const tieneFirma = !!orden.firma_imagen;
 
-    // Generar HTML
-    const html = getApprovalPage(orden, numeroFormateado, token, tieneFirma);
+    // Generar HTML con la información adicional
+    const html = getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas, pagoCompletado, metodoPago);
 
     return new Response(html, {
       headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -46,6 +49,9 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const token = url.searchParams.get('token');
+  const notas = url.searchParams.get('notas');
+  const pagoCompletado = url.searchParams.get('pago_completado') === 'true';
+  const metodoPago = url.searchParams.get('metodo_pago');
 
   if (!token) {
     return new Response(JSON.stringify({ success: false, error: 'Token no proporcionado' }), {
@@ -67,7 +73,7 @@ export async function onRequestPost(context) {
 
     // Buscar orden y verificar token
     const orden = await env.DB.prepare(
-      "SELECT id, estado, estado_trabajo, cliente_telefono FROM OrdenesTrabajo WHERE token_firma_tecnico = ?"
+      "SELECT id, estado, estado_trabajo, cliente_telefono, notas FROM OrdenesTrabajo WHERE token_firma_tecnico = ?"
     ).bind(token).first();
 
     if (!orden) {
@@ -79,13 +85,32 @@ export async function onRequestPost(context) {
 
     const esPrimeraVez = !orden.firma_imagen;
 
-    // Guardar firma y actualizar estado final (Usuario Satisfecho)
+    // Aplicar notas de cierre si existen
+    let notasActualizadas = orden.notas || '';
+    if (notas) {
+      notasActualizadas = notasActualizadas ? `${notasActualizadas}\nCierre: ${notas}` : `Cierre: ${notas}`;
+    }
+
+    // Guardar firma y cerrar la orden
     await env.DB.prepare(`
       UPDATE OrdenesTrabajo
-      SET firma_imagen = ?, estado = 'Cerrada', estado_trabajo = 'Usuario Satisfecho',
-          fecha_aprobacion = datetime('now'), fecha_completado = datetime('now')
+      SET firma_imagen = ?, estado = 'Cerrada', estado_trabajo = 'Cerrada',
+          fecha_aprobacion = datetime('now'), fecha_completado = datetime('now'),
+          notas = ?, pagado = ?, metodo_pago = ?
       WHERE id = ?
-    `).bind(firma, orden.id).run();
+    `).bind(firma, notasActualizadas, pagoCompletado ? 1 : 0, metodoPago || null, orden.id).run();
+
+    // Registrar en seguimiento
+    await env.DB.prepare(`
+      INSERT INTO SeguimientoTrabajo (orden_id, tecnico_id, estado_anterior, estado_nuevo, observaciones)
+      VALUES (?, (SELECT tecnico_asignado_id FROM OrdenesTrabajo WHERE id = ?), ?, ?, ?)
+    `).bind(
+      orden.id,
+      orden.id,
+      orden.estado_trabajo,
+      'Cerrada',
+      `Firma del cliente y cierre final. ${notas ? 'Notas: ' + notas : ''}`
+    ).run();
 
     // Si es la primera vez que firma, enviar notificación
     if (esPrimeraVez) {
@@ -96,7 +121,7 @@ export async function onRequestPost(context) {
     return new Response(JSON.stringify({
       success: true,
       es_primera_vez: esPrimeraVez,
-      mensaje: 'Orden aprobada correctamente'
+      mensaje: 'Orden aceptada y cerrada correctamente'
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
@@ -143,7 +168,7 @@ function getHTMLResponse(titulo, mensaje, esExito) {
   });
 }
 
-function getApprovalPage(orden, numeroFormateado, token, tieneFirma) {
+function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = null, pagoCompletado = null, metodoPago = null) {
   const estadoClass = obtenerClaseEstado(orden.estado_trabajo);
 
   // Construir HTML de trabajos
@@ -242,6 +267,8 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma) {
     '<p><strong>Total:</strong> $' + ((orden.monto_total || 0).toLocaleString('es-CL')) + '</p>' +
     '<p><strong>Abono:</strong> $' + ((orden.monto_abono || 0).toLocaleString('es-CL')) + '</p>' +
     '<p><strong>Restante:</strong> $' + ((orden.monto_restante || 0).toLocaleString('es-CL')) + '</p>' +
+    (notas ? '<hr><h6 class="fw-bold">NOTAS DEL TÉCNICO</h6><p>' + notas.replace(/\n/g, '<br>') + '</p>' : '') +
+    (pagoCompletado !== null ? '<hr><h6 class="fw-bold">PAGO</h6><p>' + (pagoCompletado ? 'Pago completado' : 'Pago pendiente') + (metodoPago ? ' (' + metodoPago + ')' : '') + '</p>' : '') +
     '</div>' +
     '</div>' +
     contenidoPrincipal +
