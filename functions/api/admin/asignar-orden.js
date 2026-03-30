@@ -50,11 +50,11 @@ export async function onRequestPost(context) {
     }
 
     // Verificar que la orden no esté ya asignada
-    const asignacionExistente = await env.DB.prepare(
-      "SELECT id FROM AsignacionesTecnico WHERE orden_id = ?"
+    const ordenActual = await env.DB.prepare(
+      "SELECT tecnico_asignado_id FROM OrdenesTrabajo WHERE id = ?"
     ).bind(data.orden_id).first();
 
-    if (asignacionExistente) {
+    if (ordenActual && ordenActual.tecnico_asignado_id) {
       return new Response(JSON.stringify({
         success: false,
         error: 'La orden ya está asignada a un técnico'
@@ -67,16 +67,9 @@ export async function onRequestPost(context) {
     // Asignar orden al técnico
     await env.DB.prepare(`
       UPDATE OrdenesTrabajo
-      SET tecnico_asignado_id = ?,
-          estado_trabajo = 'Pendiente Visita'
+      SET tecnico_asignado_id = ?
       WHERE id = ?
     `).bind(data.tecnico_id, data.orden_id).run();
-
-    // Registrar asignación
-    await env.DB.prepare(`
-      INSERT INTO AsignacionesTecnico (orden_id, tecnico_id, asignado_por)
-      VALUES (?, ?, ?)
-    `).bind(data.orden_id, data.tecnico_id, 'Admin').run();
 
     return new Response(JSON.stringify({
       success: true,
