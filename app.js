@@ -1121,7 +1121,7 @@ function mostrarResumenTecnicos(data) {
     if (!data.estadisticas || data.estadisticas.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="text-center text-muted py-4">
+                <td colspan="10" class="text-center text-muted py-4">
                     <i class="fas fa-info-circle me-2"></i>No hay datos para mostrar en este período
                 </td>
             </tr>
@@ -1162,11 +1162,173 @@ function mostrarResumenTecnicos(data) {
                 <td class="text-center">
                     <small class="text-muted">${ultimaOrden}</small>
                 </td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary" onclick="verOrdenesTecnico(${tecnico.id}, '${tecnico.nombre}')" title="Ver órdenes de ${tecnico.nombre}">
+                        <i class="fas fa-eye me-1"></i>Ver Órdenes
+                    </button>
+                </td>
             </tr>
         `;
     });
 
     tbody.innerHTML = html;
+}
+
+// ============================================
+// VER ÓRDENES DE UN TÉCNICO
+// ============================================
+
+async function verOrdenesTecnico(tecnicoId, tecnicoNombre) {
+    try {
+        // Mostrar modal
+        document.getElementById('modal-tecnico-nombre').textContent = tecnicoNombre.toUpperCase();
+        const modal = new bootstrap.Modal(document.getElementById('modalOrdenesTecnico'));
+        modal.show();
+
+        // Obtener período actual del filtro
+        const periodo = document.getElementById('filtro-periodo').value;
+
+        // Cargar órdenes del técnico
+        const response = await fetch(`${API_BASE}/admin/ordenes-tecnico?tecnico_id=${tecnicoId}&periodo=${periodo}`);
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarOrdenesTecnico(data.ordenes, tecnicoNombre);
+        } else {
+            document.getElementById('contenido-ordenes-tecnico').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Error al cargar órdenes: ${data.error || 'Error desconocido'}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error al cargar órdenes del técnico:', error);
+        document.getElementById('contenido-ordenes-tecnico').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>Error de conexión
+            </div>
+        `;
+    }
+}
+
+function mostrarOrdenesTecnico(ordenes, tecnicoNombre) {
+    const contenedor = document.getElementById('contenido-ordenes-tecnico');
+
+    if (!ordenes || ordenes.length === 0) {
+        contenedor.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-info-circle fa-3x mb-3 text-muted"></i>
+                <h5>No hay órdenes para ${tecnicoNombre}</h5>
+                <p class="text-muted">Este técnico no tiene órdenes asignadas en el período seleccionado.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Calcular totales
+    const totalOrdenes = ordenes.length;
+    const totalMonto = ordenes.reduce((sum, orden) => sum + (orden.monto_total || 0), 0);
+    const promedioMonto = totalOrdenes > 0 ? totalMonto / totalOrdenes : 0;
+
+    let html = `
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h3>${totalOrdenes}</h3>
+                        <small>ÓRDENES TOTALES</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h5>${formatearMontoConSimbolo(totalMonto)}</h5>
+                        <small>TOTAL FACTURADO</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h5>${formatearMontoConSimbolo(promedioMonto)}</h5>
+                        <small>PROMEDIO X ORDEN</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>N° Orden</th>
+                        <th>Patente</th>
+                        <th>Vehículo</th>
+                        <th>Cliente</th>
+                        <th>Estado</th>
+                        <th class="text-end">Total</th>
+                        <th>Fecha Creación</th>
+                        <th>Fecha Completado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    ordenes.forEach(orden => {
+        const estadoClass = obtenerClaseEstado(orden.estado);
+        const estadoIcon = obtenerIconoEstado(orden.estado);
+
+        html += `
+            <tr>
+                <td>
+                    <strong>${orden.numero_orden_formateado}</strong>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${orden.patente_placa}</span>
+                </td>
+                <td>${orden.marca || 'N/A'} ${orden.modelo || ''}</td>
+                <td>${orden.cliente_nombre || 'N/A'}</td>
+                <td>
+                    <span class="badge ${estadoClass}">${estadoIcon} ${orden.estado}</span>
+                </td>
+                <td class="text-end">
+                    <strong>${formatearMontoConSimbolo(orden.monto_total)}</strong>
+                </td>
+                <td>${orden.fecha_creacion_formateada}</td>
+                <td>${orden.fecha_completado_formateada || 'Pendiente'}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary" onclick="verOrdenDesdeModalTecnico(${orden.id})" title="Ver orden completa">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    contenedor.innerHTML = html;
+}
+
+// ============================================
+// VER ORDEN DESDE MODAL DE TÉCNICO
+// ============================================
+
+async function verOrdenDesdeModalTecnico(ordenId) {
+    // Cerrar modal de técnico
+    const modalTecnico = bootstrap.Modal.getInstance(document.getElementById('modalOrdenesTecnico'));
+    if (modalTecnico) {
+        modalTecnico.hide();
+    }
+
+    // Abrir orden
+    await verOrden(ordenId);
 }
 
 // Cargar técnicos para el filtro
