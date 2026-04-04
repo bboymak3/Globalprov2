@@ -898,35 +898,51 @@ async function aceptarYCerrarOrden() {
         }
     }
 
-    const body = {
-        orden_id: ordenActual.id,
-        tecnico_id: tecnicoActual.id,
-        notas_cierre: notasCierre,
-        pago_completado: pagoCompletado,
-        metodo_pago: pagoCompletado ? metodoPago : `Pago pendiente: ${motivoNoPago}`
-    };
-
+    // Generar token de firma
     try {
-        const response = await fetch(`${API_BASE}/cerrar-orden`, {
+        const tokenResponse = await fetch(`${API_BASE}/generar-token-firma`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+            body: JSON.stringify({
+                orden_id: ordenActual.id,
+                tecnico_id: tecnicoActual.id
+            })
         });
 
-        const data = await response.json();
+        const tokenData = await tokenResponse.json();
 
-        if (data.success) {
-            mostrarNotificacion('success', 'Orden cerrada', 'La orden se ha cerrado correctamente');
-            ordenActual.estado_trabajo = 'Cerrada';
-            ordenActual.notas = data.notas || ordenActual.notas;
-            mostrarOrdenEnModal(ordenActual);
-            cargarOrdenes();
-        } else {
-            mostrarNotificacion('error', 'Error', data.error || 'No se pudo cerrar la orden');
+        if (!tokenData.success) {
+            mostrarNotificacion('error', 'Error', tokenData.error || 'No se pudo generar el token de firma');
+            return;
         }
+
+        const token = tokenData.token;
+        const metodoPagoParam = pagoCompletado ? metodoPago : `Pago pendiente: ${motivoNoPago}`;
+
+        // Construir URL de firma con parámetros
+        const firmaUrl = `/aprobar-tecnico?token=${encodeURIComponent(token)}&notas=${encodeURIComponent(notasCierre)}&pago_completado=${pagoCompletado}&metodo_pago=${encodeURIComponent(metodoPagoParam)}`;
+
+        // Abrir ventana emergente para firma
+        const firmaWindow = window.open(firmaUrl, 'firma-cliente', 'width=800,height=600,scrollbars=yes,resizable=yes');
+
+        if (!firmaWindow) {
+            mostrarNotificacion('error', 'Error', 'No se pudo abrir la ventana de firma. Verifique que no tenga bloqueador de pop-ups.');
+            return;
+        }
+
+        mostrarNotificacion('info', 'Firma requerida', 'Se ha abierto una ventana para que el cliente firme. La orden se cerrará automáticamente después de la firma.');
+
+        // Opcional: verificar cuando se cierra la ventana y recargar órdenes
+        const checkClosed = setInterval(() => {
+            if (firmaWindow.closed) {
+                clearInterval(checkClosed);
+                cargarOrdenes(); // Recargar órdenes para ver si se cerró
+            }
+        }, 1000);
+
     } catch (error) {
-        console.error('Error al cerrar orden:', error);
-        mostrarNotificacion('error', 'Error', 'No se pudo cerrar la orden. Intente nuevamente.');
+        console.error('Error al generar token de firma:', error);
+        mostrarNotificacion('error', 'Error', 'No se pudo iniciar el proceso de firma. Intente nuevamente.');
     }
 }
 
