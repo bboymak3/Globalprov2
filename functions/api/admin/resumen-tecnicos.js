@@ -45,10 +45,10 @@ export async function onRequestGet(context) {
         t.telefono,
         COUNT(ot.id) as total_ordenes,
         SUM(ot.monto_total) as total_monto,
-        SUM(CASE WHEN ot.estado IN ('completada', 'Cerrada') THEN 1 ELSE 0 END) as ordenes_completadas,
+        SUM(CASE WHEN (ot.estado IN ('completada', 'Cerrada') OR ot.estado_trabajo IN ('Completada', 'Cerrada')) THEN 1 ELSE 0 END) as ordenes_completadas,
         SUM(CASE WHEN ot.estado = 'en_proceso' AND ot.fecha_creacion >= ? THEN 1 ELSE 0 END) as ordenes_en_proceso,
         SUM(CASE WHEN ot.estado = 'Aprobada' AND ot.fecha_creacion >= ? THEN 1 ELSE 0 END) as ordenes_aprobadas,
-        AVG(CASE WHEN ot.estado IN ('completada', 'Cerrada') THEN ot.monto_total END) as promedio_monto,
+        AVG(CASE WHEN (ot.estado IN ('completada', 'Cerrada') OR ot.estado_trabajo IN ('Completada', 'Cerrada')) THEN ot.monto_total END) as promedio_monto,
         MAX(ot.fecha_completado) as ultima_orden
       FROM Tecnicos t
       LEFT JOIN OrdenesTrabajo ot ON t.id = ot.tecnico_asignado_id
@@ -73,7 +73,7 @@ export async function onRequestGet(context) {
         COUNT(*) as total_ordenes_sistema,
         SUM(monto_total) as total_monto_sistema,
         AVG(monto_total) as promedio_sistema,
-        SUM(CASE WHEN estado IN ('completada', 'Cerrada') THEN 1 ELSE 0 END) as total_completadas_sistema
+        SUM(CASE WHEN (estado IN ('completada', 'Cerrada') OR estado_trabajo IN ('Completada', 'Cerrada')) THEN 1 ELSE 0 END) as total_completadas_sistema
       FROM OrdenesTrabajo
       WHERE fecha_creacion >= ?
     `).bind(fechaInicioStr).first();

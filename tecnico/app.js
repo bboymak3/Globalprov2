@@ -138,7 +138,8 @@ function renderizarOrdenes() {
     );
 
     const completadas = ordenes.filter(o =>
-        ['Completada', 'Aprobada', 'Usuario Satisfecho', 'No Completada', 'Cerrada'].includes(o.estado_trabajo)
+        ['Completada', 'Aprobada', 'Usuario Satisfecho', 'No Completada', 'Cerrada'].includes(o.estado_trabajo) ||
+        ['completada', 'Cerrada'].includes(o.estado)
     );
 
     renderizarListaOrdenes('ordenes-pendientes', pendientes);
