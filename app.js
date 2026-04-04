@@ -154,6 +154,7 @@ async function guardarOrden() {
         cliente: document.getElementById('cliente').value,
         rut: document.getElementById('rut').value,
         telefono: document.getElementById('telefono').value,
+        direccion: document.getElementById('direccion').value,
         fecha_ingreso: document.getElementById('fecha-ingreso').value,
         hora_ingreso: document.getElementById('hora-ingreso').value,
         recepcionista: document.getElementById('recepcionista').value,
@@ -301,20 +302,18 @@ async function buscarOrdenes() {
 
 function mostrarResultados(ordenes) {
     let html = '';
-    
+
     ordenes.forEach(orden => {
-        const estadoClass = obtenerClaseEstado(orden.estado);
-        const estadoIcon = obtenerIconoEstado(orden.estado);
         const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
-        
+
         html += `
             <div class="card orden-card mb-3" onclick="verOrden(${orden.id})">
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-md-8">
-                            <h5 class="card-title mb-2">
-                                <strong>ORDEN #${numeroFormateado}</strong>
-                            </h5>
+                            <div class="position-absolute top-0 end-0 mt-2 me-2">
+                                <span class="badge bg-danger fs-6">${numeroFormateado}</span>
+                            </div>
                             <h6 class="card-subtitle mb-2">
                                 Patente: ${orden.patente_placa}
                             </h6>
@@ -336,7 +335,7 @@ function mostrarResultados(ordenes) {
             </div>
         `;
     });
-    
+
     document.getElementById('resultados-busqueda').innerHTML = html;
 }
 
