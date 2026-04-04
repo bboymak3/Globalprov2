@@ -132,6 +132,7 @@ CREATE TABLE OrdenesTrabajo (
     notas TEXT,
     completo INTEGER DEFAULT 0,
     fecha_completado TEXT,
+    fecha_creacion TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_id) REFERENCES Clientes(id) ON DELETE SET NULL,
     FOREIGN KEY (vehiculo_id) REFERENCES Vehiculos(id) ON DELETE SET NULL,
     FOREIGN KEY (tecnico_asignado_id) REFERENCES Tecnicos(id) ON DELETE SET NULL

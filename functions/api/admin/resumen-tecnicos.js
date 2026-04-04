@@ -46,18 +46,17 @@ export async function onRequestGet(context) {
         COUNT(ot.id) as total_ordenes,
         SUM(ot.monto_total) as total_monto,
         SUM(CASE WHEN ot.estado IN ('completada', 'Cerrada') THEN 1 ELSE 0 END) as ordenes_completadas,
-        SUM(CASE WHEN ot.estado = 'en_proceso' THEN 1 ELSE 0 END) as ordenes_en_proceso,
-        SUM(CASE WHEN ot.estado = 'Aprobada' THEN 1 ELSE 0 END) as ordenes_aprobadas,
-        AVG(ot.monto_total) as promedio_monto,
+        SUM(CASE WHEN ot.estado = 'en_proceso' AND ot.fecha_creacion >= ? THEN 1 ELSE 0 END) as ordenes_en_proceso,
+        SUM(CASE WHEN ot.estado = 'Aprobada' AND ot.fecha_creacion >= ? THEN 1 ELSE 0 END) as ordenes_aprobadas,
+        AVG(CASE WHEN ot.estado IN ('completada', 'Cerrada') THEN ot.monto_total END) as promedio_monto,
         MAX(ot.fecha_completado) as ultima_orden
       FROM Tecnicos t
       LEFT JOIN OrdenesTrabajo ot ON t.id = ot.tecnico_asignado_id
-        AND ot.fecha_creacion >= ?
         AND ot.estado IN ('Aprobada', 'completada', 'en_proceso', 'Cerrada')
       WHERE t.activo = 1
     `;
 
-    const params = [fechaInicioStr];
+    const params = [fechaInicioStr, fechaInicioStr];
 
     if (tecnicoId) {
       query += ' AND t.id = ?';
@@ -73,22 +72,24 @@ export async function onRequestGet(context) {
       SELECT
         COUNT(*) as total_ordenes_sistema,
         SUM(monto_total) as total_monto_sistema,
-        AVG(monto_total) as promedio_sistema
+        AVG(monto_total) as promedio_sistema,
+        SUM(CASE WHEN estado IN ('completada', 'Cerrada') THEN 1 ELSE 0 END) as total_completadas_sistema
       FROM OrdenesTrabajo
       WHERE fecha_creacion >= ?
-        AND estado IN ('Aprobada', 'completada', 'en_proceso')
-        AND tecnico_asignado_id IS NOT NULL
     `).bind(fechaInicioStr).first();
+
+    const estadisticasData = estadisticas.results || estadisticas || [];
 
     return new Response(JSON.stringify({
       success: true,
       periodo: periodo,
       fecha_inicio: fechaInicioStr,
-      estadisticas: estadisticas.results || [],
+      estadisticas: estadisticasData,
       total_general: totalGeneral || {
         total_ordenes_sistema: 0,
         total_monto_sistema: 0,
-        promedio_sistema: 0
+        promedio_sistema: 0,
+        total_completadas_sistema: 0
       }
     }), {
       headers: { 'Content-Type': 'application/json' }
