@@ -314,17 +314,17 @@ function mostrarResultados(ordenes) {
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <h5 class="card-title mb-2">
-                                <span class="badge ${estadoClass}">${estadoIcon} ${orden.estado}</span>
+                                <strong>ORDEN #${numeroFormateado}</strong>
                             </h5>
                             <h6 class="card-subtitle mb-2">
-                                <strong>ORDEN #${numeroFormateado}</strong> | Patente: ${orden.patente_placa}
+                                Patente: ${orden.patente_placa}
                             </h6>
                             <p class="card-text mb-1">
-                                <i class="fas fa-user me-2"></i>${orden.cliente_nombre || 'N/A'}
+                                <i class="fas fa-user me-2"></i>${orden.cliente_nombre || 'Cliente no registrado'}
                             </p>
                             <p class="card-text mb-1">
-                                <i class="fas fa-calendar me-2"></i>${orden.fecha_ingreso || 'N/A'} 
-                                <i class="fas fa-dollar-sign ms-3 me-2"></i>Total: $${(orden.monto_total || 0).toLocaleString('es-CL')}
+                                <i class="fas fa-calendar me-2"></i>${orden.fecha_ingreso || 'N/A'}
+                                <i class="fas fa-dollar-sign ms-3 me-2"></i><strong>Total: $${(orden.monto_total || 0).toLocaleString('es-CL')}</strong>
                             </p>
                         </div>
                         <div class="col-md-4 text-end">

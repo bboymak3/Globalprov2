@@ -145,7 +145,7 @@ CREATE INDEX IF NOT EXISTS idx_ordenes_cliente ON OrdenesTrabajo(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_ordenes_vehiculo ON OrdenesTrabajo(vehiculo_id);
 CREATE INDEX IF NOT EXISTS idx_ordenes_tecnico ON OrdenesTrabajo(tecnico_asignado_id);
 CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON OrdenesTrabajo(estado);
-CREATE INDEX IF NOT EXISTS idx_ordenes_fecha ON OrdenesTrabajo(fecha_creacion);
+CREATE INDEX IF NOT EXISTS idx_ordenes_fecha ON OrdenesTrabajo(fecha_ingreso);
 
 -- ============================================
 -- TABLA DE TÉCNICOS

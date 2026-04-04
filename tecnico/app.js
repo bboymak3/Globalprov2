@@ -112,15 +112,26 @@ function showTab(tabName) {
 // ============================================
 
 async function cargarOrdenes() {
-    if (!tecnicoActual) return;
+    if (!tecnicoActual) {
+        console.log('No hay técnico actual');
+        return;
+    }
+
+    console.log('Cargando órdenes para técnico:', tecnicoActual.id);
 
     try {
         const response = await fetch(`${API_BASE}/ordenes?tecnico_id=${tecnicoActual.id}`);
         const data = await response.json();
 
+        console.log('Respuesta de órdenes:', data);
+
         if (data.success) {
             ordenes = data.ordenes;
+            console.log('Órdenes cargadas:', ordenes.length);
             renderizarOrdenes();
+        } else {
+            console.error('Error en respuesta:', data.error);
+            mostrarNotificacion('error', 'Error', data.error || 'No se pudieron cargar las órdenes');
         }
     } catch (error) {
         console.error('Error al cargar órdenes:', error);

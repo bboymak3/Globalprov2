@@ -99,6 +99,14 @@
             margin-bottom: 15px;
         }
 
+        .numero-orden-small {
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 5px;
+            padding: 5px 10px;
+        }
+
         /* Estados de orden */
         .estado-enviada {
             background-color: #fff3cd;
@@ -234,16 +242,16 @@
         <div id="seccion-crear">
             <div class="row">
                 <div class="col-12 text-center mb-4">
-                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">GP - OT</h1>
+                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">GP-OT-2026</h1>
                     <p class="text-muted">Complete el formulario para crear una nueva orden de trabajo</p>
                 </div>
             </div>
 
             <!-- Número de Orden -->
-            <div class="row justify-content-center mb-4">
-                <div class="col-md-6">
-                    <div class="numero-orden" id="numero-orden-display">
-                        ORDEN DE TRABAJO N° <span id="num-orden">000058</span>
+            <div class="row justify-content-end mb-4">
+                <div class="col-md-3">
+                    <div class="numero-orden-small bg-danger text-white p-2 rounded" id="numero-orden-display">
+                        N° <span id="num-orden">000058</span>
                     </div>
                 </div>
             </div>
