@@ -949,12 +949,6 @@ async function aceptarYCerrarOrden() {
     }
 }
 
-    } catch (error) {
-        console.error('Error al generar token de firma:', error);
-        mostrarNotificacion('error', 'Error', 'No se pudo iniciar el proceso de firma. Intente nuevamente.');
-    }
-}
-
 function actualizarPanelPagoCierre() {
     const pagoSi = document.getElementById('pago-cerrado-si')?.checked;
     const pagoNo = document.getElementById('pago-cerrado-no')?.checked;
