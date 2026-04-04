@@ -27,6 +27,8 @@ function mostrarSeccion(seccion) {
     // Ocultar todas las secciones
     document.getElementById('seccion-crear').style.display = 'none';
     document.getElementById('seccion-buscar').style.display = 'none';
+    document.getElementById('seccion-tecnicos').style.display = 'none';
+    document.getElementById('seccion-resumen').style.display = 'none';
     
     // Mostrar la sección seleccionada
     document.getElementById('seccion-' + seccion).style.display = 'block';
@@ -34,6 +36,13 @@ function mostrarSeccion(seccion) {
     // Actualizar nav
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
     event.target.classList.add('active');
+
+    // Cargar datos específicos de la sección
+    if (seccion === 'tecnicos') {
+        cargarTecnicos();
+    } else if (seccion === 'resumen') {
+        cargarResumenTecnicos();
+    }
 }
 
 // ============================================
@@ -69,9 +78,9 @@ function calcularRestante() {
     const restante = total - abono;
     
     // Actualizar resumen
-    document.getElementById('resumen-total').textContent = '$' + total.toLocaleString('es-CL');
-    document.getElementById('resumen-abono').textContent = '$' + abono.toLocaleString('es-CL');
-    document.getElementById('resumen-restante').textContent = '$' + restante.toLocaleString('es-CL');
+    document.getElementById('resumen-total').textContent = formatearMontoConSimbolo(total);
+    document.getElementById('resumen-abono').textContent = formatearMontoConSimbolo(abono);
+    document.getElementById('resumen-restante').textContent = formatearMontoConSimbolo(restante);
 }
 
 // ============================================
@@ -323,7 +332,7 @@ function mostrarResultados(ordenes) {
                             </p>
                             <p class="card-text mb-1">
                                 <i class="fas fa-calendar me-2"></i>${orden.fecha_ingreso || 'N/A'} 
-                                <i class="fas fa-dollar-sign ms-3 me-2"></i>Total: $${(orden.monto_total || 0).toLocaleString('es-CL')}
+                                <i class="fas fa-dollar-sign ms-3 me-2"></i>Total: ${formatearMontoConSimbolo(orden.monto_total)}
                             </p>
                         </div>
                         <div class="col-md-4 text-end">
@@ -479,19 +488,19 @@ function mostrarOrdenEnModal(orden) {
                     <div class="col-4">
                         <div class="p-3 bg-light rounded">
                             <small class="text-muted">Total</small>
-                            <div class="h4">$${(orden.monto_total || 0).toLocaleString('es-CL')}</div>
+                            <div class="h4">${formatearMontoConSimbolo(orden.monto_total)}</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="p-3 bg-light rounded">
                             <small class="text-muted">Abono</small>
-                            <div class="h4">$${(orden.monto_abono || 0).toLocaleString('es-CL')}</div>
+                            <div class="h4">${formatearMontoConSimbolo(orden.monto_abono)}</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="p-3 bg-light rounded">
                             <small class="text-muted">Restante</small>
-                            <div class="h4">$${(orden.monto_restante || 0).toLocaleString('es-CL')}</div>
+                            <div class="h4">${formatearMontoConSimbolo(orden.monto_restante)}</div>
                         </div>
                     </div>
                 </div>
@@ -671,9 +680,9 @@ async function generarPDF(orden) {
 
     doc.setFont(undefined, 'normal');
     doc.setFontSize(7);
-    doc.text(`Total Estimado: $${(orden.monto_total || 0).toLocaleString('es-CL')}`, leftMargin, yPos); yPos += 4;
-    doc.text(`Abono Recibido: $${(orden.monto_abono || 0).toLocaleString('es-CL')}`, leftMargin, yPos); yPos += 4;
-    doc.text(`Restante: $${(orden.monto_restante || 0).toLocaleString('es-CL')}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Total Estimado: ${formatearMontoConSimbolo(orden.monto_total)}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Abono Recibido: ${formatearMontoConSimbolo(orden.monto_abono)}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Restante: ${formatearMontoConSimbolo(orden.monto_restante)}`, leftMargin, yPos); yPos += 4;
     if (orden.metodo_pago) {
         doc.text(`Método de Pago: ${orden.metodo_pago}`, leftMargin, yPos); yPos += 4;
     }
@@ -769,6 +778,16 @@ function copiarLink(link) {
 // ============================================
 // UTILIDADES
 // ============================================
+
+function formatearMonto(monto) {
+    // Redondear a entero y formatear sin decimales
+    const montoEntero = Math.round(monto || 0);
+    return montoEntero.toLocaleString('es-CL');
+}
+
+function formatearMontoConSimbolo(monto) {
+    return '$' + formatearMonto(monto);
+}
 
 function obtenerClaseEstado(estado) {
     switch (estado) {
@@ -998,3 +1017,126 @@ async function asignarOrden() {
         mostrarNotificacion('error', 'Error', 'Error de conexión');
     }
 }
+
+// ============================================
+// RESUMEN DE TÉCNICOS
+// ============================================
+
+async function cargarResumenTecnicos() {
+    const periodo = document.getElementById('filtro-periodo').value;
+    const tecnicoId = document.getElementById('filtro-tecnico').value;
+
+    try {
+        let url = `${API_BASE}/admin/resumen-tecnicos?periodo=${periodo}`;
+        if (tecnicoId) {
+            url += `&tecnico_id=${tecnicoId}`;
+        }
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarResumenTecnicos(data);
+        } else {
+            mostrarNotificacion('error', 'Error', data.error || 'Error al cargar resumen');
+        }
+    } catch (error) {
+        console.error('Error al cargar resumen técnicos:', error);
+        mostrarNotificacion('error', 'Error', 'Error de conexión');
+    }
+}
+
+function mostrarResumenTecnicos(data) {
+    // Actualizar totales generales
+    document.getElementById('total-general-monto').textContent =
+        formatearMontoConSimbolo(data.total_general.total_monto_sistema || 0);
+    document.getElementById('total-general-ordenes').textContent =
+        data.total_general.total_ordenes_sistema || 0;
+    document.getElementById('total-general-promedio').textContent =
+        formatearMontoConSimbolo(data.total_general.promedio_sistema || 0);
+
+    // Mostrar estadísticas por técnico
+    const tbody = document.getElementById('tabla-resumen-tecnicos');
+
+    if (!data.estadisticas || data.estadisticas.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                    <i class="fas fa-info-circle me-2"></i>No hay datos para mostrar en este período
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    let html = '';
+    data.estadisticas.forEach(tecnico => {
+        const promedio = tecnico.promedio_monto || 0;
+        const ultimaOrden = tecnico.ultima_orden ?
+            new Date(tecnico.ultima_orden).toLocaleDateString('es-CL') : 'N/A';
+
+        html += `
+            <tr>
+                <td>
+                    <strong>${tecnico.nombre}</strong>
+                </td>
+                <td>${tecnico.telefono}</td>
+                <td class="text-center">
+                    <span class="badge bg-primary">${tecnico.total_ordenes || 0}</span>
+                </td>
+                <td class="text-center">
+                    <span class="badge bg-success">${tecnico.ordenes_completadas || 0}</span>
+                </td>
+                <td class="text-center">
+                    <span class="badge bg-warning">${tecnico.ordenes_en_proceso || 0}</span>
+                </td>
+                <td class="text-center">
+                    <span class="badge bg-info">${tecnico.ordenes_aprobadas || 0}</span>
+                </td>
+                <td class="text-end">
+                    <strong class="text-success">${formatearMontoConSimbolo(tecnico.total_monto || 0)}</strong>
+                </td>
+                <td class="text-end">
+                    ${formatearMontoConSimbolo(promedio)}
+                </td>
+                <td class="text-center">
+                    <small class="text-muted">${ultimaOrden}</small>
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+// Cargar técnicos para el filtro
+async function cargarTecnicosParaFiltro() {
+    try {
+        const response = await fetch(`${API_BASE}/admin/tecnicos`);
+        const data = await response.json();
+
+        if (data.success && data.tecnicos) {
+            const select = document.getElementById('filtro-tecnico');
+            select.innerHTML = '<option value="">Todos los técnicos</option>';
+
+            data.tecnicos.forEach(tecnico => {
+                if (tecnico.activo) {
+                    const option = document.createElement('option');
+                    option.value = tecnico.id;
+                    option.textContent = tecnico.nombre;
+                    select.appendChild(option);
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error al cargar técnicos para filtro:', error);
+    }
+}
+
+// Inicializar cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    // ... código existente ...
+
+    // Cargar técnicos para el filtro del resumen
+    cargarTecnicosParaFiltro();
+});

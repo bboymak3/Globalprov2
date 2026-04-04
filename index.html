@@ -224,6 +224,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="mostrarSeccion('tecnicos')">Gestión Técnicos</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="mostrarSeccion('resumen')">Resumen Técnicos</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -687,6 +690,96 @@
                                 <i class="fas fa-check me-2"></i>Asignar Orden
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección: Resumen de Técnicos -->
+        <div id="seccion-resumen" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12 text-center">
+                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">Resumen de Técnicos</h1>
+                    <p class="text-muted">Estadísticas de rendimiento por técnico</p>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-filter me-2"></i>Filtros
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="form-label">Período</label>
+                                    <select class="form-select" id="filtro-periodo" onchange="cargarResumenTecnicos()">
+                                        <option value="dia">Hoy</option>
+                                        <option value="semana">Esta Semana</option>
+                                        <option value="mes" selected>Este Mes</option>
+                                        <option value="año">Este Año</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Técnico (opcional)</label>
+                                    <select class="form-select" id="filtro-tecnico" onchange="cargarResumenTecnicos()">
+                                        <option value="">Todos los técnicos</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button class="btn btn-primary w-100" onclick="cargarResumenTecnicos()">
+                                        <i class="fas fa-sync me-2"></i>Actualizar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-chart-line me-2"></i>Total General
+                        </div>
+                        <div class="card-body text-center">
+                            <h3 class="text-success mb-2" id="total-general-monto">$0</h3>
+                            <p class="mb-1"><strong id="total-general-ordenes">0</strong> órdenes totales</p>
+                            <p class="text-muted mb-0">Promedio: <strong id="total-general-promedio">$0</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de estadísticas -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-table me-2"></i>Estadísticas por Técnico
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Técnico</th>
+                                    <th>Teléfono</th>
+                                    <th class="text-center">Órdenes Totales</th>
+                                    <th class="text-center">Completadas</th>
+                                    <th class="text-center">En Proceso</th>
+                                    <th class="text-center">Aprobadas</th>
+                                    <th class="text-end">Total Facturado</th>
+                                    <th class="text-end">Promedio x Orden</th>
+                                    <th class="text-center">Última Orden</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-resumen-tecnicos">
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>Cargando estadísticas...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

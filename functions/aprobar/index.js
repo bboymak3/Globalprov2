@@ -59,7 +59,14 @@ function getErrorPage(title, message) {
 function getApprovedPage(orden) {
   const n = String(orden.numero_orden).padStart(6, '0');
   const firmaImg = orden.firma_imagen ? '<img src="' + orden.firma_imagen + '" style="max-width:200px;margin-top:20px;border:1px solid #ddd;border-radius:8px;">' : '';
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Aprobada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-green-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md"><div class="text-6xl mb-4">✅</div><h1 class="text-3xl font-black text-green-700 mb-2">¡Orden Aprobada!</h1><p class="text-gray-600 mb-4">Su firma ha sido guardada exitosamente.</p><div class="bg-green-50 rounded-xl p-4 mb-6"><p class="text-sm text-gray-600">Orden N°</p><p class="text-2xl font-bold text-green-700">' + n + '</p><p class="text-sm text-gray-500 mt-2">Fecha: ' + (orden.fecha_aprobacion || 'N/A') + '</p></div>' + firmaImg + '<p class="text-sm text-gray-500 mt-6">¡Gracias por confiar en Global Pro Automotriz!</p></div></body></html>';
+  const verOtUrl = '/ver-ot?token=' + encodeURIComponent(orden.token);
+  const descargarPdfUrl = verOtUrl + '&download=1';
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Aprobada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-green-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md"><div class="text-6xl mb-4">✅</div><h1 class="text-3xl font-black text-green-700 mb-2">¡Orden Aprobada!</h1><p class="text-gray-600 mb-4">Su firma ha sido guardada exitosamente.</p><div class="bg-green-50 rounded-xl p-4 mb-6"><p class="text-sm text-gray-600">Orden N°</p><p class="text-2xl font-bold text-green-700">' + n + '</p><p class="text-sm text-gray-500 mt-2">Fecha: ' + (orden.fecha_aprobacion || 'N/A') + '</p></div>' + firmaImg + '<div class="mt-4 grid gap-3">' +
+    '<a href="' + verOtUrl + '" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-5 rounded-lg">🔍 Ver OT en línea</a>' +
+    '<a href="' + descargarPdfUrl + '" target="_blank" class="inline-block bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-5 rounded-lg">📥 Descargar PDF</a>' +
+    '<button onclick="window.close()" class="inline-block bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-lg">Cerrar</button>' +
+  '</div><p class="text-sm text-gray-500 mt-6">¡Gracias por confiar en Global Pro Automotriz!</p></div></body></html>';
 }
 
 function getCancelledPage(orden) {
@@ -298,8 +305,9 @@ function getApprovalPage(orden, token) {
   html += '  successHTML += "<p class=\\"text-2xl font-bold text-green-700\\">" + numeroOrden + "</p>";';
   html += '  successHTML += "<p class=\\"text-sm text-gray-600 mt-2\\">Patente: <strong>" + orden.patente_placa + "</strong></p>";';
   html += '  successHTML += "</div>";';
-  html += '  successHTML += "<a href=\\"" + verFacturaUrl + "\\" target=\\"_blank\\" class=\\"block w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">📄 Ver Factura en Línea</a>";';
-  html += '  successHTML += "<a href=\\"" + whatsappUrl + "\\" target=\\"_blank\\" class=\\"block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">📱 Enviar Factura por WhatsApp</a>";';
+  html += '  successHTML += "<a href=\"" + verFacturaUrl + "\" target=\"_blank\" class=\"block w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\">🔍 Ver OT en línea</a>";';
+  html += '  successHTML += "<a href=\"" + verFacturaUrl + "&download=1\" target=\"_blank\" class=\"block w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\">📥 Descargar PDF</a>";';
+  html += '  successHTML += "<a href=\"" + whatsappUrl + "\" target=\"_blank\" class=\"block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\">📱 Enviar por WhatsApp</a>";';
   html += '  successHTML += "<button onclick=\\"cerrarPagina()\\" class=\\"w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl mb-3 transition\\">✅ Finalizar</button>";';
   html += '  successHTML += "<p class=\\"text-sm text-gray-500 mt-4\\">¡Gracias por confiar en Global Pro Automotriz!</p>";';
   html += '  successHTML += "</div>";';

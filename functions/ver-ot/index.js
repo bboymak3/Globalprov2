@@ -203,19 +203,19 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '<div class="col-4">' +
     '<div class="p-3 bg-light rounded">' +
     '<small class="text-muted">Total</small>' +
-    '<div class="h4">$' + ((orden.monto_total || 0).toLocaleString('es-CL')) + '</div>' +
+    '<div class="h4">$' + (Math.round(orden.monto_total || 0).toLocaleString('es-CL')) + '</div>' +
     '</div>' +
     '</div>' +
     '<div class="col-4">' +
     '<div class="p-3 bg-light rounded">' +
     '<small class="text-muted">Abono</small>' +
-    '<div class="h4">$' + ((orden.monto_abono || 0).toLocaleString('es-CL')) + '</div>' +
+    '<div class="h4">$' + (Math.round(orden.monto_abono || 0).toLocaleString('es-CL')) + '</div>' +
     '</div>' +
     '</div>' +
     '<div class="col-4">' +
     '<div class="p-3 bg-light rounded">' +
     '<small class="text-muted">Restante</small>' +
-    '<div class="h4">$' + ((orden.monto_restante || 0).toLocaleString('es-CL')) + '</div>' +
+    '<div class="h4">$' + (Math.round(orden.monto_restante || 0).toLocaleString('es-CL')) + '</div>' +
     '</div>' +
     '</div>' +
     '</div>' +
@@ -304,6 +304,10 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '  doc.text("Generado: " + new Date().toLocaleString("es-CL"), pageWidth / 2, pageHeight - 10, { align: "center" });' +
     '  doc.save("OT-" + numeroFormateado + "-" + (ordenData.patente_placa || "N/A") + ".pdf");' +
     '}' +
+    'window.addEventListener("load", function() {' +
+    '  var params = new URLSearchParams(window.location.search);' +
+    '  if (params.get("download") === "1") { descargarPDF(); }' +
+    '});' +
     '<\/script>' +
     '</div>' +
     '</body>' +
