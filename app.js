@@ -850,31 +850,6 @@ function mostrarNotificacion(tipo, titulo, mensaje) {
 // GESTIÓN DE TÉCNICOS
 // ============================================
 
-function mostrarSeccion(seccion) {
-    // Ocultar todas las secciones
-    document.getElementById('seccion-crear').style.display = 'none';
-    document.getElementById('seccion-buscar').style.display = 'none';
-    const seccionTecnicos = document.getElementById('seccion-tecnicos');
-    if (seccionTecnicos) {
-        seccionTecnicos.style.display = 'none';
-    }
-
-    // Mostrar la sección seleccionada
-    document.getElementById('seccion-' + seccion).style.display = 'block';
-
-    // Actualizar nav
-    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-    if (event && event.target) {
-        event.target.classList.add('active');
-    }
-
-    // Si es la sección de técnicos, cargar datos
-    if (seccion === 'tecnicos') {
-        cargarTecnicos();
-        cargarOrdenesDisponibles();
-    }
-}
-
 async function cargarTecnicos() {
     try {
         const response = await fetch(`${API_BASE}/admin/tecnicos`);
