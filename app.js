@@ -1245,7 +1245,7 @@ function mostrarOrdenesTecnico(ordenes, tecnicoNombre) {
                         <th class="text-end">Total</th>
                         <th>Fecha Creación</th>
                         <th>Fecha Completado</th>
-                        <th class="text-center">Completada</th>
+                        <th class="text-center">Completadas</th>
                         <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
@@ -1257,11 +1257,10 @@ function mostrarOrdenesTecnico(ordenes, tecnicoNombre) {
         const estadoIcon = obtenerIconoEstado(orden.estado);
         
         // Determinar si la orden está completada
-        const estaCompletada = (orden.estado === 'completada' || orden.estado === 'Cerrada' || 
-                               orden.estado_trabajo === 'Completada' || orden.estado_trabajo === 'Cerrada');
+        const estaCompletada = orden.estado === 'completada';
         const iconoCompletada = estaCompletada ? 
             '<i class="fas fa-check-circle text-success" title="Completada"></i>' : 
-            '<i class="fas fa-times-circle text-danger" title="No completada"></i>';
+            '<i class="fas fa-check-circle text-danger" title="No completada"></i>';
 
         html += `
             <tr>
