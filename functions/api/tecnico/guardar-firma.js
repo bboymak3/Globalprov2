@@ -1,5 +1,5 @@
 // ============================================
-// API: GENERAR TOKEN DE FIRMA (PARA TÉCNICOS)
+// API: GUARDAR FIRMA DEL CLIENTE
 // Global Pro Automotriz
 // ============================================
 
@@ -9,19 +9,19 @@ export async function onRequestPost(context) {
   try {
     const data = await request.json();
 
-    if (!data.orden_id || !data.tecnico_id) {
+    if (!data.orden_id || !data.tecnico_id || !data.firma) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Faltan datos: orden_id y tecnico_id'
+        error: 'Faltan datos: orden_id, tecnico_id y firma'
       }), {
         headers: { 'Content-Type': 'application/json' },
         status: 400
       });
     }
 
-    // Verificar que la orden existe y está asignada a este técnico
+    // Verificar que la orden está asignada a este técnico
     const orden = await env.DB.prepare(
-      "SELECT id, cliente_telefono FROM OrdenesTrabajo WHERE id = ? AND tecnico_asignado_id = ?"
+      "SELECT id, estado_trabajo FROM OrdenesTrabajo WHERE id = ? AND tecnico_asignado_id = ?"
     ).bind(data.orden_id, data.tecnico_id).first();
 
     if (!orden) {
@@ -34,37 +34,35 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Verificar si ya tiene un token de firma
-    const tokenExistente = await env.DB.prepare(
-      "SELECT token FROM OrdenesTrabajo WHERE id = ? AND token_firma_tecnico IS NOT NULL"
-    ).bind(data.orden_id).first();
+    // Guardar firma y cambiar estado a Aprobada
+    await env.DB.prepare(`
+      UPDATE OrdenesTrabajo
+      SET firma_imagen = ?, estado = 'Aprobada', estado_trabajo = 'Aprobada',
+          fecha_aprobacion = datetime('now')
+      WHERE id = ?
+    `).bind(data.firma, data.orden_id).run();
 
-    if (tokenExistente) {
-      return new Response(JSON.stringify({
-        success: true,
-        token: tokenExistente.token
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Generar nuevo token
-    const nuevoToken = crypto.randomUUID();
-
-    // Guardar token en la orden
-    await env.DB.prepare(
-      "UPDATE OrdenesTrabajo SET token_firma_tecnico = ? WHERE id = ?"
-    ).bind(nuevoToken, data.orden_id).run();
+    // Registrar en seguimiento
+    await env.DB.prepare(`
+      INSERT INTO SeguimientoTrabajo (orden_id, tecnico_id, estado_anterior, estado_nuevo, observaciones)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(
+      data.orden_id,
+      data.tecnico_id,
+      orden.estado_trabajo,
+      'Aprobada',
+      'Firma del cliente capturada en dispositivo del técnico'
+    ).run();
 
     return new Response(JSON.stringify({
       success: true,
-      token: nuevoToken
+      mensaje: 'Firma guardada correctamente'
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Error al generar token de firma:', error);
+    console.error('Error al guardar firma:', error);
     return new Response(JSON.stringify({
       success: false,
       error: error.message

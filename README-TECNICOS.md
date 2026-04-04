@@ -58,6 +58,7 @@ Este documento describe todas las mejoras y nuevas funcionalidades implementadas
 ├── fotos.js          # Obtener fotos de una orden
 ├── agregar-nota.js   # Agregar notas a la orden
 ├── notas.js          # Obtener notas de una orden
+├── guardar-firma.js  # Guardar firma del cliente
 └── historial.js      # Ver historial de seguimiento
 ```
 
@@ -122,7 +123,27 @@ Este documento describe todas las mejoras y nuevas funcionalidades implementadas
 - Marcar trabajo como completado
 - Opción de solicitar firma del cliente
 
-#### 8. ❌ Reportar No Completado
+#### 8. 📝 Firma del Cliente en el Teléfono del Técnico
+**IMPORTANTE:** Como solicitaste, el técnico puede pedir al cliente que firme en su celular al finalizar el trabajo.
+
+**Características:**
+- Canvas táctil para firma con dedo
+- Funciona en dispositivos móviles
+- Guarda la firma en base64
+- Cambia el estado de la orden a "Aprobada"
+- Registro de la firma con fecha y hora
+
+**API:** `POST /api/tecnico/guardar-firma`
+
+**Flujo:**
+1. Técnico marca orden como "Completada"
+2. Sistema pregunta: "¿Desea que el cliente firme la orden?"
+3. Si el técnico dice "Sí":
+   - Abre modal con canvas de firma
+   - Cliente firma con su dedo
+   - Firma se guarda y orden pasa a "Aprobada"
+
+#### 9. ❌ Reportar No Completado
 - Selección de motivo predefinido:
   - Faltan piezas
   - Vehículo no disponible

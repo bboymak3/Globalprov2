@@ -27,19 +27,21 @@ export async function onRequestGet(context) {
       });
     }
 
+    const notas = await getNotasForOrden(env, orden.id);
+
     if (orden.estado === 'Aprobada') {
-      return new Response(getApprovedPage(orden), {
+      return new Response(getApprovedPage(orden, notas), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
       });
     }
 
     if (orden.estado === 'Cancelada') {
-      return new Response(getCancelledPage(orden), {
+      return new Response(getCancelledPage(orden, notas), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
       });
     }
 
-    return new Response(getApprovalPage(orden, token), {
+    return new Response(getApprovalPage(orden, token, notas), {
       headers: { 'Content-Type': 'text/html; charset=utf-8' }
     });
 
@@ -56,41 +58,148 @@ function getErrorPage(title, message) {
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Error</title></head><body style="font-family:Arial,sans-serif;text-align:center;padding:50px;background:#f3f4f6;"><h1 style="color:#dc2626;">' + title + '</h1><p style="color:#4b5563;">' + message + '</p></body></html>';
 }
 
-function getApprovedPage(orden) {
-  const n = String(orden.numero_orden).padStart(6, '0');
-  const firmaImg = orden.firma_imagen ? '<img src="' + orden.firma_imagen + '" alt="Firma del cliente" style="max-width: 300px; border: 1px solid #ddd; border-radius: 5px;">' : '';
+async function getNotasForOrden(env, ordenId) {
+  const notasData = await env.DB.prepare(
+    'SELECT nota, fecha_nota FROM NotasTrabajo WHERE orden_id = ? ORDER BY fecha_nota ASC'
+  ).bind(ordenId).all();
+  return notasData.results || [];
+}
 
-  // Datos para el PDF
+function renderNotasHtml(notas) {
+  if (!notas || notas.length === 0) {
+    return '<p class="text-sm text-gray-600">No hay notas de cierre registradas.</p>';
+  }
+
+  let html = '<ul class="space-y-2 text-sm text-gray-700">';
+  notas.forEach(nota => {
+    const fecha = nota.fecha_nota ? new Date(nota.fecha_nota).toLocaleString('es-CL') : 'Sin fecha';
+    html += '<li><strong>' + fecha + ':</strong> ' + (nota.nota || 'Sin detalle') + '</li>';
+  });
+  html += '</ul>';
+  return html;
+}
+
+function getApprovedPage(orden, notas) {
+  const n = String(orden.numero_orden).padStart(6, '0');
   const cliente = orden.cliente_nombre || 'Cliente';
-  const patente = orden.patente_placa || 'N/A';
-  const marca = orden.marca || 'N/A';
-  const modelo = orden.modelo || 'N/A';
-  const trabajos = [];
-  if (orden.trabajo_frenos) trabajos.push('Frenos: ' + (orden.detalle_frenos || 'Sin detalle'));
-  if (orden.trabajo_luces) trabajos.push('Luces: ' + (orden.detalle_luces || 'Sin detalle'));
-  if (orden.trabajo_tren_delantero) trabajos.push('Tren Delantero: ' + (orden.detalle_tren_delantero || 'Sin detalle'));
-  if (orden.trabajo_correas) trabajos.push('Correas: ' + (orden.detalle_correas || 'Sin detalle'));
-  if (orden.trabajo_componentes) trabajos.push('Componentes: ' + (orden.detalle_componentes || 'Sin detalle'));
-  const trabajosStr = trabajos.join('; ') || 'No hay trabajos seleccionados';
+  const fechaCreacion = orden.fecha_creacion || orden.fecha_ingreso || 'N/A';
+  const fechaAprobacion = orden.fecha_aprobacion || 'N/A';
   const total = (orden.monto_total || 0).toLocaleString('es-CL');
   const abono = (orden.monto_abono || 0).toLocaleString('es-CL');
   const restante = (orden.monto_restante || 0).toLocaleString('es-CL');
+  const verOtUrl = '/ver-ot?token=' + encodeURIComponent(orden.token);
+  const firmaImg = orden.firma_imagen ? '<img src="' + orden.firma_imagen + '" style="max-width:240px;margin-top:20px;border:1px solid #ddd;border-radius:8px;">' : '<div class="text-sm text-gray-600 mt-3">No se registró imagen de firma.</div>';
+  const notasHtml = renderNotasHtml(notas);
 
-  return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Orden Aprobada #' + n + ' - Global Pro Automotriz</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"><style>@media print { .no-print { display: none !important; } .print-only { display: block !important; } body { background: white !important; } } body { background: #f5f5f5; } .ot-card { box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 15px; margin-bottom: 20px; }</style></head><body><nav class="navbar navbar-dark no-print" style="background: #a80000;"><div class="container"><a class="navbar-brand fw-bold" href="#"><i class="fas fa-wrench me-2"></i>GLOBAL PRO AUTOMOTRIZ</a></div></nav><div class="container py-4"><div class="d-flex justify-content-between align-items-center mb-4 no-print"><h2 class="mb-0">Orden Aprobada #' + n + '</h2><div class="d-flex gap-2"><button class="btn btn-primary" onclick="descargarPDF()"><i class="fas fa-download me-2"></i>Descargar PDF</button><button class="btn btn-secondary" onclick="verPDFEnLinea()"><i class="fas fa-eye me-2"></i>Ver en Línea</button></div></div><div class="ot-card card"><div class="card-header bg-success text-white"><h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>ORDEN APROBADA #' + n + '</h5></div><div class="card-body"><div class="alert alert-success text-center"><h4 class="alert-heading">¡Orden Aprobada!</h4><p>Su firma ha sido guardada exitosamente.</p><hr><p class="mb-0">Fecha de aprobación: ' + (orden.fecha_aprobacion || 'N/A') + '</p></div>' + (firmaImg ? '<div class="text-center mt-4 p-4 bg-light rounded"><h6 class="fw-bold"><i class="fas fa-signature me-2"></i>Firma del Cliente</h6>' + firmaImg + '</div>' : '') + '<div class="row mt-4"><div class="col-md-6"><h6 class="fw-bold text-danger">DATOS DEL CLIENTE</h6><p><strong>Nombre:</strong> ' + cliente + '</p><p><strong>Fecha Ingreso:</strong> ' + (orden.fecha_ingreso || 'N/A') + '</p></div><div class="col-md-6"><h6 class="fw-bold text-danger">DATOS DEL VEHÍCULO</h6><p><strong>Patente:</strong> <span style="font-size: 1.2rem; font-weight: bold; color: #a80000;">' + patente + '</span></p><p><strong>Marca/Modelo:</strong> ' + marca + ' ' + modelo + '</p></div></div><div class="row mt-3"><div class="col-md-6"><h6 class="fw-bold text-danger">TRABAJOS REALIZADOS</h6><p>' + trabajosStr + '</p></div><div class="col-md-6"><h6 class="fw-bold text-danger">VALORES</h6><div class="row text-center"><div class="col-4"><div class="p-3 bg-light rounded"><small class="text-muted">Total</small><div class="h5">$' + total + '</div></div></div><div class="col-4"><div class="p-3 bg-light rounded"><small class="text-muted">Abono</small><div class="h5">$' + abono + '</div></div></div><div class="col-4"><div class="p-3 bg-light rounded"><small class="text-muted">Restante</small><div class="h5">$' + restante + '</div></div></div></div></div></div></div></div><footer class="text-center py-3 text-muted no-print"><small>Generado el ' + new Date().toLocaleString('es-CL') + '</small></footer><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script>const ordenData = ' + JSON.stringify(orden) + '; function descargarPDF() { const { jsPDF } = window.jspdf; const doc = new jsPDF("p", "mm", "a4"); const numeroFormateado = "' + n + '"; doc.setFillColor(168, 0, 0); doc.rect(0, 0, 210, 20, "F"); doc.setFontSize(20); doc.setTextColor(255, 255, 255); doc.text("ORDEN DE TRABAJO #" + numeroFormateado, 105, 14, { align: "center" }); doc.setTextColor(0, 0, 0); let y = 30; doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("INFORMACIÓN CLIENTE", 14, y); y += 6; doc.setFont("helvetica", "normal"); doc.text("Nombre: ' + cliente + '", 14, y); y += 6; doc.text("Patente: ' + patente + '", 14, y); y += 6; doc.text("Vehículo: ' + marca + ' ' + modelo + '", 14, y); y += 6; doc.text("Fecha de ingreso: " + (ordenData.fecha_ingreso || "N/A") + " " + (ordenData.hora_ingreso || ""), 14, y); y += 10; doc.setFont("helvetica", "bold"); doc.text("TRABAJOS", 14, y); y += 6; doc.setFont("helvetica", "normal"); const trabajos = []; if (ordenData.trabajo_frenos) trabajos.push("Frenos: " + (ordenData.detalle_frenos || "Sin detalle")); if (ordenData.trabajo_luces) trabajos.push("Luces: " + (ordenData.detalle_luces || "Sin detalle")); if (ordenData.trabajo_tren_delantero) trabajos.push("Tren Delantero: " + (ordenData.detalle_tren_delantero || "Sin detalle")); if (ordenData.trabajo_correas) trabajos.push("Correas: " + (ordenData.detalle_correas || "Sin detalle")); if (ordenData.trabajo_componentes) trabajos.push("Componentes: " + (ordenData.detalle_componentes || "Sin detalle")); if (trabajos.length === 0) { doc.text("- No hay trabajos seleccionados", 14, y); y += 6; } else { trabajos.forEach((t) => { doc.text("- " + t, 14, y); y += 6; if (y > 260) { doc.addPage(); y = 20; } }); } y += 4; doc.setFont("helvetica", "bold"); doc.text("VALORES", 14, y); y += 6; doc.setFont("helvetica", "normal"); doc.text("Total: $' + total + '", 14, y); y += 6; doc.text("Abono: $' + abono + '", 14, y); y += 6; doc.text("Restante: $' + restante + '", 14, y); y += 10; if (ordenData.firma_imagen) { doc.setTextColor(0, 0, 128); doc.text("Firma del cliente: Sí", 14, y); } else { doc.setTextColor(128, 0, 0); doc.text("Firma del cliente: No", 14, y); } doc.setTextColor(0, 0, 0); doc.save("OT-" + numeroFormateado + "-" + (ordenData.patente_placa || "N/A") + ".pdf"); } function verPDFEnLinea() { const { jsPDF } = window.jspdf; const doc = new jsPDF("p", "mm", "a4"); const numeroFormateado = "' + n + '"; doc.setFillColor(168, 0, 0); doc.rect(0, 0, 210, 20, "F"); doc.setFontSize(20); doc.setTextColor(255, 255, 255); doc.text("ORDEN DE TRABAJO #" + numeroFormateado, 105, 14, { align: "center" }); doc.setTextColor(0, 0, 0); let y = 30; doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("INFORMACIÓN CLIENTE", 14, y); y += 6; doc.setFont("helvetica", "normal"); doc.text("Nombre: ' + cliente + '", 14, y); y += 6; doc.text("Patente: ' + patente + '", 14, y); y += 6; doc.text("Vehículo: ' + marca + ' ' + modelo + '", 14, y); y += 6; doc.text("Fecha de ingreso: " + (ordenData.fecha_ingreso || "N/A") + " " + (ordenData.hora_ingreso || ""), 14, y); y += 10; doc.setFont("helvetica", "bold"); doc.text("TRABAJOS", 14, y); y += 6; doc.setFont("helvetica", "normal"); const trabajos2 = []; if (ordenData.trabajo_frenos) trabajos2.push("Frenos: " + (ordenData.detalle_frenos || "Sin detalle")); if (ordenData.trabajo_luces) trabajos2.push("Luces: " + (ordenData.detalle_luces || "Sin detalle")); if (ordenData.trabajo_tren_delantero) trabajos2.push("Tren Delantero: " + (ordenData.detalle_tren_delantero || "Sin detalle")); if (ordenData.trabajo_correas) trabajos2.push("Correas: " + (ordenData.detalle_correas || "Sin detalle")); if (ordenData.trabajo_componentes) trabajos2.push("Componentes: " + (ordenData.detalle_componentes || "Sin detalle")); if (trabajos2.length === 0) { doc.text("- No hay trabajos seleccionados", 14, y); y += 6; } else { trabajos2.forEach((t) => { doc.text("- " + t, 14, y); y += 6; if (y > 260) { doc.addPage(); y = 20; } }); } y += 4; doc.setFont("helvetica", "bold"); doc.text("VALORES", 14, y); y += 6; doc.setFont("helvetica", "normal"); doc.text("Total: $' + total + '", 14, y); y += 6; doc.text("Abono: $' + abono + '", 14, y); y += 6; doc.text("Restante: $' + restante + '", 14, y); const pdfBlob = doc.output("blob"); const pdfUrl = URL.createObjectURL(pdfBlob); window.open(pdfUrl, "_blank"); }</script></body></html>';
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Aprobada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-slate-100 min-h-screen p-4"><div class="max-w-3xl mx-auto">' +
+    '<div class="bg-white rounded-3xl shadow-2xl overflow-hidden">' +
+    '  <div class="bg-emerald-600 p-6 text-center text-white">' +
+    '    <div class="text-6xl mb-3">✅</div>' +
+    '    <h1 class="text-3xl font-black mb-2">Orden Aprobada</h1>' +
+    '    <p class="text-sm opacity-90">Esta orden ya se encuentra firmada y aprobada.</p>' +
+    '  </div>' +
+    '  <div class="p-6">' +
+    '    <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">' +
+    '      <div class="col">' +
+    '        <div class="border rounded-3xl p-4 h-100">' +
+    '          <p class="text-sm text-slate-500 mb-1">Cliente</p>' +
+    '          <p class="text-lg font-semibold">' + cliente + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="border rounded-3xl p-4 h-100">' +
+    '          <p class="text-sm text-slate-500 mb-1">Orden</p>' +
+    '          <p class="text-lg font-semibold">#' + n + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="border rounded-3xl p-4 h-100">' +
+    '          <p class="text-sm text-slate-500 mb-1">Fecha creación</p>' +
+    '          <p class="text-lg font-semibold">' + fechaCreacion + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="border rounded-3xl p-4 h-100">' +
+    '          <p class="text-sm text-slate-500 mb-1">Fecha cierre</p>' +
+    '          <p class="text-lg font-semibold">' + fechaAprobacion + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '    </div>' +
+    '    <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">' +
+    '      <div class="col">' +
+    '        <div class="bg-red-50 border border-red-200 rounded-3xl p-4 text-center">' +
+    '          <p class="text-sm text-red-700 mb-1">Monto Total</p>' +
+    '          <p class="text-2xl font-bold text-red-800">$' + total + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="bg-white border border-slate-200 rounded-3xl p-4 text-center">' +
+    '          <p class="text-sm text-slate-500 mb-1">Abono</p>' +
+    '          <p class="text-2xl font-bold">$' + abono + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="bg-white border border-slate-200 rounded-3xl p-4 text-center">' +
+    '          <p class="text-sm text-slate-500 mb-1">Restante</p>' +
+    '          <p class="text-2xl font-bold">$' + restante + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '    </div>' +
+    '    <div class="bg-white border border-slate-200 rounded-3xl p-5 mb-4">' +
+    '      <div class="d-flex justify-content-between align-items-center mb-3">' +
+    '        <div>' +
+    '          <p class="text-sm text-slate-500 mb-1">Estado</p>' +
+    '          <span class="badge bg-success text-white">Aprobada</span>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="mt-3">' +
+    '        <p class="text-sm text-slate-500 mb-2">Firma registrada:</p>' +
+    '        <div class="text-center">' + firmaImg + '</div>' +
+    '      </div>' +
+    '    </div>' +
+    '    <div class="bg-white border border-slate-200 rounded-3xl p-5 mb-4">' +
+    '      <h3 class="text-lg font-bold mb-2">Notas de Cierre</h3>' +
+    notasHtml +
+    '    </div>' +
+    '    <div class="d-grid gap-3">' +
+    '      <a href="' + verOtUrl + '" class="btn btn-danger btn-lg">' +
+    '        <i class="fas fa-eye me-2"></i>Ver Orden</a>' +
+    '      <button type="button" onclick="window.print()" class="btn btn-danger btn-lg">' +
+    '        <i class="fas fa-print me-2"></i>Imprimir</button>' +
+    '      <a href="' + verOtUrl + '" class="btn btn-danger btn-lg">' +
+    '        <i class="fas fa-download me-2"></i>Descargar / Ver PDF</a>' +
+    '    </div>' +
+    '    <p class="text-center text-sm text-slate-500 mt-4">Puede volver a usar este mismo enlace para ver la orden cuando quiera.</p>' +
+    '  </div>' +
+    '</div>' +
+    '</div>';
 }
 
-function getCancelledPage(orden) {
+function getCancelledPage(orden, notas) {
   const n = String(orden.numero_orden).padStart(6, '0');
   const motivo = orden.motivo_cancelacion || 'No especificado';
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Cancelada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-red-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md"><div class="text-8xl mb-4">❌</div><h1 class="text-3xl font-black text-red-700 mb-2">Orden Cancelada</h1><p class="text-gray-600 mb-4">Esta orden de trabajo ha sido cancelada.</p><div class="bg-red-50 rounded-xl p-4 mb-6"><p class="text-sm text-gray-600">Orden N°</p><p class="text-2xl font-bold text-red-700">' + n + '</p><p class="text-xs text-gray-500 mt-2">Fecha: ' + (orden.fecha_cancelacion || 'N/A') + '</p></div><div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6"><p class="text-sm font-bold text-yellow-800">Motivo:</p><p class="text-sm text-yellow-700">' + motivo + '</p></div></div></body></html>';
+  const total = (orden.monto_total || 0).toLocaleString('es-CL');
+  const abono = (orden.monto_abono || 0).toLocaleString('es-CL');
+  const restante = (orden.monto_restante || 0).toLocaleString('es-CL');
+  const notasHtml = renderNotasHtml(notas);
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Cancelada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-red-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-lg"><div class="text-8xl mb-4">❌</div><h1 class="text-3xl font-black text-red-700 mb-2">Orden Cancelada</h1><p class="text-gray-600 mb-4">Esta orden de trabajo ha sido cancelada.</p><div class="bg-red-50 rounded-xl p-4 mb-4"><p class="text-sm text-gray-600">Orden N°</p><p class="text-2xl font-bold text-red-700">' + n + '</p><p class="text-xs text-gray-500 mt-2">Fecha: ' + (orden.fecha_cancelacion || 'N/A') + '</p></div>' +
+    '<div class="row row-cols-1 row-cols-md-3 g-3 mb-4">' +
+    '  <div class="col"><div class="bg-white border border-slate-200 rounded-3xl p-4"><p class="text-sm text-slate-500 mb-1">Total</p><p class="text-xl font-bold">$' + total + '</p></div></div>' +
+    '  <div class="col"><div class="bg-white border border-slate-200 rounded-3xl p-4"><p class="text-sm text-slate-500 mb-1">Abono</p><p class="text-xl font-bold">$' + abono + '</p></div></div>' +
+    '  <div class="col"><div class="bg-white border border-slate-200 rounded-3xl p-4"><p class="text-sm text-slate-500 mb-1">Restante</p><p class="text-xl font-bold">$' + restante + '</p></div></div>' +
+    '</div>' +
+    '<div class="bg-white border border-slate-200 rounded-3xl p-4 text-left mb-4"><h3 class="fw-bold mb-2">Notas de Cierre</h3>' + notasHtml + '</div>' +
+    '<div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6"><p class="text-sm font-bold text-yellow-800">Motivo:</p><p class="text-sm text-yellow-700">' + motivo + '</p></div></div></body></html>';
 }
 
-function getApprovalPage(orden, token) {
+function getApprovalPage(orden, token, notas) {
   const n = String(orden.numero_orden).padStart(6, '0');
   const cliente = orden.cliente_nombre || 'Cliente';
   const total = (orden.monto_total || 0).toLocaleString('es-CL');
   const abono = (orden.monto_abono || 0).toLocaleString('es-CL');
   const restante = (orden.monto_restante || 0).toLocaleString('es-CL');
+  const notasHtml = renderNotasHtml(notas);
 
   // Construir lista de trabajos
   var trabajos = [];
@@ -152,6 +261,10 @@ function getApprovalPage(orden, token) {
   html += '<p class="font-bold text-xl">$' + restante + '</p>';
   html += '</div>';
   html += '</div>';
+  html += '</div>';
+  html += '<div class="bg-white border border-slate-200 rounded-3xl p-4 mb-4">';
+  html += '<h3 class="font-bold text-lg mb-3 text-gray-800">📝 Notas del Técnico</h3>';
+  html += notasHtml;
   html += '</div>';
   html += '<div class="mb-6">';
   html += '<h3 class="font-bold text-lg mb-3 text-gray-800">🔧 Trabajos Seleccionados</h3>';

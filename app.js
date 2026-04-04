@@ -154,7 +154,6 @@ async function guardarOrden() {
         cliente: document.getElementById('cliente').value,
         rut: document.getElementById('rut').value,
         telefono: document.getElementById('telefono').value,
-        direccion: document.getElementById('direccion').value,
         fecha_ingreso: document.getElementById('fecha-ingreso').value,
         hora_ingreso: document.getElementById('hora-ingreso').value,
         recepcionista: document.getElementById('recepcionista').value,
@@ -366,6 +365,8 @@ async function verOrden(ordenId) {
         const data = await response.json();
         
         if (data.orden) {
+            const notas = await cargarNotasOrden(data.orden.id);
+            data.orden.notas = notas;
             ordenActual = data.orden;
             mostrarOrdenEnModal(data.orden);
         }
@@ -375,6 +376,19 @@ async function verOrden(ordenId) {
     } finally {
         mostrarLoading(false);
     }
+}
+
+async function cargarNotasOrden(ordenId) {
+    try {
+        const response = await fetch(`${API_BASE}/tecnico/notas?orden_id=${ordenId}`);
+        const data = await response.json();
+        if (data.success && Array.isArray(data.notas)) {
+            return data.notas;
+        }
+    } catch (error) {
+        console.error('Error al cargar notas de la orden:', error);
+    }
+    return [];
 }
 
 function mostrarOrdenEnModal(orden) {
@@ -498,6 +512,16 @@ function mostrarOrdenEnModal(orden) {
                 </div>
                 ${orden.metodo_pago ? `<p class="text-center mt-2"><strong>Método de Pago:</strong> ${orden.metodo_pago}</p>` : ''}
             </div>
+        </div>
+        
+        <div class="mt-4 p-3 bg-light rounded-3">
+            <h6 class="fw-bold"><i class="fas fa-sticky-note me-2"></i>Notas de cierre</h6>
+            ${orden.notas && orden.notas.length ? (
+                '<ul class="list-group list-group-flush">' + orden.notas.map(nota => {
+                    const fecha = nota.fecha_nota ? new Date(nota.fecha_nota).toLocaleString('es-CL') : 'Sin fecha';
+                    return `<li class="list-group-item py-2"><strong>${fecha}:</strong> ${nota.nota || 'Sin detalle'}</li>`;
+                }).join('') + '</ul>'
+            ) : '<p class="text-muted mb-0">Sin notas de cierre registradas.</p>'}
         </div>
         
         ${firmaHtml}
@@ -839,9 +863,16 @@ function mostrarSeccion(seccion) {
     if (seccionTecnicos) {
         seccionTecnicos.style.display = 'none';
     }
+    const seccionLiquidar = document.getElementById('seccion-liquidar');
+    if (seccionLiquidar) {
+        seccionLiquidar.style.display = 'none';
+    }
 
     // Mostrar la sección seleccionada
-    document.getElementById('seccion-' + seccion).style.display = 'block';
+    const seccionSeleccionada = document.getElementById('seccion-' + seccion);
+    if (seccionSeleccionada) {
+        seccionSeleccionada.style.display = 'block';
+    }
 
     // Actualizar nav
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
@@ -849,10 +880,12 @@ function mostrarSeccion(seccion) {
         event.target.classList.add('active');
     }
 
-    // Si es la sección de técnicos, cargar datos
+    // Cargar datos según la sección seleccionada
     if (seccion === 'tecnicos') {
         cargarTecnicos();
-        cargarOrdenesDisponibles();
+        cargarOrdenesAprobadas();
+    } else if (seccion === 'liquidar') {
+        cargarLiquidaciones();
     }
 }
 
@@ -935,64 +968,6 @@ function actualizarSelectTecnicos(tecnicos) {
     });
 }
 
-async function cargarOrdenesDisponibles() {
-    try {
-        const response = await fetch(`${API_BASE}/admin/ordenes-disponibles`);
-        const data = await response.json();
-
-        if (data.success && data.ordenes) {
-            renderizarListaOrdenesDisponibles(data.ordenes);
-        } else {
-            document.getElementById('lista-ordenes-disponibles').innerHTML = `
-                <div class="text-center text-muted py-3">
-                    <p>No hay órdenes disponibles</p>
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error('Error al cargar órdenes disponibles:', error);
-        document.getElementById('lista-ordenes-disponibles').innerHTML = `
-            <div class="text-center text-danger py-3">
-                <p>Error al cargar órdenes</p>
-            </div>
-        `;
-    }
-}
-
-function renderizarListaOrdenesDisponibles(ordenes) {
-    if (ordenes.length === 0) {
-        document.getElementById('lista-ordenes-disponibles').innerHTML = `
-            <div class="text-center text-muted py-3">
-                <p>No hay órdenes disponibles</p>
-            </div>
-        `;
-        return;
-    }
-
-    let html = '<div class="table-responsive"><table class="table table-hover">';
-    html += '<thead><tr><th>N° Orden</th><th>Cliente</th><th>Patente</th><th>Fecha</th><th>Acción</th></tr></thead><tbody>';
-
-    ordenes.forEach(orden => {
-        const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
-        const fecha = new Date(orden.fecha_creacion).toLocaleDateString('es-CL');
-        html += `<tr>
-            <td><strong class="text-primary">${numeroFormateado}</strong></td>
-            <td>${orden.cliente_nombre || 'N/A'}</td>
-            <td><code>${orden.patente_placa || 'N/A'}</code></td>
-            <td>${fecha}</td>
-            <td><button class="btn btn-sm btn-outline-primary" onclick="seleccionarOrden(${orden.id}, '${numeroFormateado}')">Seleccionar</button></td>
-        </tr>`;
-    });
-
-    html += '</tbody></table></div>';
-    document.getElementById('lista-ordenes-disponibles').innerHTML = html;
-}
-
-function seleccionarOrden(id, numero) {
-    document.getElementById('asignar-orden-id').value = id;
-    mostrarNotificacion('info', 'Orden Seleccionada', `Orden ${numero} seleccionada para asignación`);
-}
-
 async function registrarTecnico(event) {
     event.preventDefault();
 
@@ -1047,9 +1022,11 @@ async function asignarOrden() {
         const data = await response.json();
 
         if (data.success) {
-            mostrarNotificacion('success', 'Orden Asignada', 'La orden ha sido asignada exitosamente');
+            mostrarNotificacion('success', 'Orden Asignada', data.mensaje || 'La orden ha sido asignada exitosamente');
             document.getElementById('asignar-orden-id').value = '';
             document.getElementById('asignar-tecnico-id').value = '';
+            // Refrescar lista de órdenes aprobadas
+            cargarOrdenesAprobadas();
         } else {
             mostrarNotificacion('error', 'Error', data.error || 'Error al asignar orden');
         }
@@ -1057,4 +1034,368 @@ async function asignarOrden() {
         console.error('Error al asignar orden:', error);
         mostrarNotificacion('error', 'Error', 'Error de conexión');
     }
+}
+
+// ============================================
+// CARGAR ÓRDENES APROBADAS
+// ============================================
+
+async function cargarOrdenesAprobadas() {
+    try {
+        const response = await fetch(`${API_BASE}/admin/ordenes-aprobadas`);
+        const data = await response.json();
+
+        if (data.success && data.ordenes) {
+            renderizarListaOrdenesAprobadas(data.ordenes);
+        } else {
+            document.getElementById('lista-ordenes-aprobadas').innerHTML = `
+                <div class="text-center text-muted py-3">
+                    <p>No hay órdenes aprobadas pendientes de asignar</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error al cargar órdenes aprobadas:', error);
+        document.getElementById('lista-ordenes-aprobadas').innerHTML = `
+            <div class="text-center text-danger py-3">
+                <p>Error al cargar órdenes aprobadas</p>
+            </div>
+        `;
+    }
+}
+
+function renderizarListaOrdenesAprobadas(ordenes) {
+    if (ordenes.length === 0) {
+        document.getElementById('lista-ordenes-aprobadas').innerHTML = `
+            <div class="text-center text-muted py-3">
+                <p>No hay órdenes aprobadas pendientes de asignar</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="list-group">';
+
+    ordenes.forEach(orden => {
+        const fechaAprobacion = orden.fecha_aprobacion
+            ? new Date(orden.fecha_aprobacion).toLocaleDateString('es-CL')
+            : 'N/A';
+
+        const estadoAsignacion = orden.asignada
+            ? '<span class="badge bg-secondary">Asignada</span>'
+            : '<span class="badge bg-success">Disponible</span>';
+
+        html += `
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center ${orden.asignada ? 'bg-light' : ''}">
+                <div>
+                    <h6 class="mb-1">
+                        <strong class="text-success">#${orden.numero_orden_formateado}</strong>
+                        <span class="text-muted ms-2">| ${orden.patente_placa}</span>
+                    </h6>
+                    <small class="text-muted">
+                        ${orden.cliente_nombre || 'Cliente sin nombre'} | Aprobada: ${fechaAprobacion}
+                    </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    ${estadoAsignacion}
+                    <button class="btn btn-sm btn-outline-primary" onclick="copiarNumeroOrden('${orden.numero_orden_formateado}')" title="Copiar número">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    ${!orden.asignada ? `
+                        <button class="btn btn-sm btn-outline-success" onclick="asignarOrdenDesdeLista(${orden.id}, '${orden.numero_orden_formateado}')" title="Asignar orden">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    document.getElementById('lista-ordenes-aprobadas').innerHTML = html;
+}
+
+async function cargarLiquidaciones() {
+    const tabla = document.getElementById('tabla-liquidacion');
+    if (tabla) {
+        tabla.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-spinner fa-spin"></i> Cargando liquidaciones...
+            </div>
+        `;
+    }
+
+    const periodo = document.getElementById('filtro-periodo')?.value || '';
+    const tecnicoId = document.getElementById('filtro-tecnico-id')?.value || '';
+    const fechaInicio = document.getElementById('filtro-fecha-inicio')?.value || '';
+    const fechaFin = document.getElementById('filtro-fecha-fin')?.value || '';
+
+    const params = new URLSearchParams();
+    if (periodo) params.set('periodo', periodo);
+    if (tecnicoId) params.set('filtro_tecnico_id', tecnicoId);
+    if (fechaInicio) params.set('fecha_inicio', fechaInicio);
+    if (fechaFin) params.set('fecha_fin', fechaFin);
+
+    try {
+        const response = await fetch(`${API_BASE}/admin/liquidar-tecnicos?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success && data.liquidaciones) {
+            renderizarLiquidaciones(data.liquidaciones);
+        } else {
+            if (tabla) {
+                tabla.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <p>No hay datos de liquidación disponibles</p>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Error al cargar liquidaciones:', error);
+        if (tabla) {
+            tabla.innerHTML = `
+                <div class="text-center text-danger py-4">
+                    <p>Error al cargar liquidaciones</p>
+                </div>
+            `;
+        }
+    }
+}
+
+async function cargarTecnicosLiquidacion() {
+    const select = document.getElementById('filtro-tecnico-id');
+    if (!select) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/admin/tecnicos`);
+        const data = await response.json();
+
+        if (data.success && data.tecnicos) {
+            select.innerHTML = '<option value="">Todos los técnicos</option>';
+            data.tecnicos.forEach(tecnico => {
+                const option = document.createElement('option');
+                option.value = tecnico.id;
+                option.textContent = `${tecnico.nombre} (${tecnico.telefono})`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error al cargar técnicos para liquidación:', error);
+    }
+}
+
+function renderizarLiquidaciones(liquidaciones) {
+    const tabla = document.getElementById('tabla-liquidacion');
+    const detalle = document.getElementById('detalle-ordenes-tecnico');
+    const totalTecnicos = document.getElementById('liquidar-total-tecnicos');
+    const totalOrdenes = document.getElementById('liquidar-total-ordenes');
+    const totalMonto = document.getElementById('liquidar-total-monto');
+    const totalGanancia = document.getElementById('liquidar-total-ganancia');
+
+    if (detalle) {
+        detalle.innerHTML = '';
+    }
+
+    const sumaOrdenes = liquidaciones.reduce((acc, item) => acc + (item.ordenes_realizadas || 0), 0);
+    const sumaMonto = liquidaciones.reduce((acc, item) => acc + (item.monto_total || 0), 0);
+    const sumaGanancia = sumaMonto * 0.4;
+
+    if (totalTecnicos) totalTecnicos.textContent = liquidaciones.length.toString();
+    if (totalOrdenes) totalOrdenes.textContent = sumaOrdenes.toString();
+    if (totalMonto) totalMonto.textContent = `$${sumaMonto.toLocaleString('es-CL')}`;
+    if (totalGanancia) totalGanancia.textContent = `$${sumaGanancia.toLocaleString('es-CL')}`;
+
+    if (!tabla) return;
+
+    if (liquidaciones.length === 0) {
+        tabla.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <p>No se encontraron técnicos o órdenes asignadas.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Técnico</th>
+                        <th>Órdenes</th>
+                        <th>Monto Generado</th>
+                        <th>Ganancia 40%</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    liquidaciones.forEach(tecnico => {
+        const nombre = (tecnico.nombre || 'Sin nombre').replace(/'/g, "\\'");
+        html += `
+            <tr>
+                <td>${tecnico.nombre || 'Sin nombre'}</td>
+                <td>${tecnico.ordenes_realizadas || 0}</td>
+                <td>$${(tecnico.monto_total || 0).toLocaleString('es-CL')}</td>
+                <td>$${(tecnico.ganancia_tecnico || 0).toLocaleString('es-CL')}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="verOrdenesTecnico(${tecnico.id}, '${nombre}')">
+                        Ver Órdenes (${tecnico.ordenes_realizadas || 0})
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    tabla.innerHTML = html;
+}
+
+async function verOrdenesTecnico(tecnicoId, tecnicoNombre) {
+    const detalle = document.getElementById('detalle-ordenes-tecnico');
+    if (!detalle) return;
+
+    detalle.innerHTML = `
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-list me-2"></i>Órdenes de ${tecnicoNombre}
+            </div>
+            <div class="card-body text-center text-muted py-4">
+                <i class="fas fa-spinner fa-spin"></i> Cargando órdenes...
+            </div>
+        </div>
+    `;
+
+    const periodo = document.getElementById('filtro-periodo')?.value || '';
+    const fechaInicio = document.getElementById('filtro-fecha-inicio')?.value || '';
+    const fechaFin = document.getElementById('filtro-fecha-fin')?.value || '';
+
+    const params = new URLSearchParams();
+    params.set('tecnico_id', tecnicoId);
+    if (periodo) params.set('periodo', periodo);
+    if (fechaInicio) params.set('fecha_inicio', fechaInicio);
+    if (fechaFin) params.set('fecha_fin', fechaFin);
+
+    try {
+        const response = await fetch(`${API_BASE}/admin/liquidar-tecnicos?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success && data.ordenes) {
+            renderizarOrdenesLiquidacion(data.ordenes, tecnicoNombre);
+        } else {
+            detalle.innerHTML = `
+                <div class="card mb-4">
+                    <div class="card-body text-center text-muted py-4">
+                        <p>No hay órdenes para este técnico</p>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error al cargar órdenes del técnico:', error);
+        detalle.innerHTML = `
+            <div class="card mb-4">
+                <div class="card-body text-center text-danger py-4">
+                    <p>Error al cargar las órdenes del técnico</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function renderizarOrdenesLiquidacion(ordenes, tecnicoNombre) {
+    const detalle = document.getElementById('detalle-ordenes-tecnico');
+    if (!detalle) return;
+
+    if (!ordenes || ordenes.length === 0) {
+        detalle.innerHTML = `
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-list me-2"></i>Órdenes de ${tecnicoNombre}
+                </div>
+                <div class="card-body text-center text-muted py-4">
+                    <p>No hay órdenes registradas para este técnico.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-list me-2"></i>Órdenes de ${tecnicoNombre}
+                    <span class="badge bg-secondary ms-2">${ordenes.length} órdenes</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th># Orden</th>
+                                <th>Cliente</th>
+                                <th>Creación</th>
+                                <th>Cierre</th>
+                                <th>Estatus</th>
+                                <th>Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+
+    ordenes.forEach(orden => {
+        const fechaCreacion = orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-CL') : 'N/A';
+        const fechaCierre = orden.fecha_aprobacion ? new Date(orden.fecha_aprobacion).toLocaleDateString('es-CL') : 'N/A';
+        const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
+
+        html += `
+            <tr>
+                <td>#${numeroFormateado}</td>
+                <td>${orden.cliente_nombre || 'N/A'}</td>
+                <td>${fechaCreacion}</td>
+                <td>${fechaCierre}</td>
+                <td>${orden.estado || 'N/A'}</td>
+                <td>$${(orden.monto_total || 0).toLocaleString('es-CL')}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="verOrden(${orden.id})">
+                        Ver OT
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+
+    detalle.innerHTML = html;
+}
+
+function copiarNumeroOrden(numeroOrden) {
+    navigator.clipboard.writeText(numeroOrden).then(() => {
+        mostrarNotificacion('success', 'Copiado', `Número de orden #${numeroOrden} copiado al portapapeles`);
+    }).catch(() => {
+        mostrarNotificacion('error', 'Error', 'No se pudo copiar el número de orden');
+    });
+}
+
+function asignarOrdenDesdeLista(ordenId, numeroOrden) {
+    document.getElementById('asignar-orden-id').value = numeroOrden;
+    document.getElementById('asignar-tecnico-id').focus();
+    mostrarNotificacion('info', 'Orden Seleccionada', `Orden #${numeroOrden} seleccionada. Seleccione un técnico para asignar.`);
 }

@@ -26,6 +26,11 @@ export async function onRequestGet(context) {
       return getHTMLResponse('Orden no encontrada', 'El link no es válido o la orden no existe.', false);
     }
 
+    const notasData = await env.DB.prepare(
+      'SELECT nota, fecha_nota FROM NotasTrabajo WHERE orden_id = ? ORDER BY fecha_nota ASC'
+    ).bind(orden.id).all();
+    orden.notas = notasData.results || [];
+
     const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
     const html = generateOTViewerPage(orden, numeroFormateado, token);
 
@@ -72,8 +77,23 @@ function getHTMLResponse(titulo, mensaje, esExito) {
   });
 }
 
+function renderNotasHtml(notas) {
+  if (!notas || notas.length === 0) {
+    return '<p class="text-muted mb-0">Sin notas de cierre registradas.</p>';
+  }
+
+  let html = '<ul class="list-unstyled">';
+  notas.forEach(nota => {
+    const fecha = nota.fecha_nota ? new Date(nota.fecha_nota).toLocaleString('es-CL') : 'Sin fecha';
+    html += '<li class="mb-2"><strong>' + fecha + ':</strong> ' + (nota.nota || 'Sin detalle') + '</li>';
+  });
+  html += '</ul>';
+  return html;
+}
+
 function generateOTViewerPage(orden, numeroFormateado, token) {
   const estadoClass = obtenerClaseEstado(orden.estado);
+  const notasHtml = renderNotasHtml(orden.notas);
 
   // Construir HTML de trabajos
   let trabajosHtml = '';
@@ -104,7 +124,7 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
   if (orden.firma_imagen) {
     firmaHtml = '' +
       '<div class="text-center mt-4 p-4 bg-light rounded">' +
-      '<h6 class="fw-bold"><i class="fas fa-signature me-2"></i>Firma del Cliente</h6>' +
+      '<h6 class="fw-bold text-success"><i class="fas fa-check-circle me-2"></i>Orden Aprobada y Firmada</h6>' +
       '<img src="' + orden.firma_imagen + '" alt="Firma del cliente" style="max-width: 300px; border: 1px solid #ddd; border-radius: 5px;">' +
       '<p class="small text-muted mt-2">Fecha de aprobación: ' + (orden.fecha_aprobacion || 'N/A') + '</p>' +
       '</div>';
@@ -147,10 +167,10 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '<div class="d-flex justify-content-between align-items-center mb-4 no-print">' +
     '<h2 class="mb-0">Orden de Trabajo #' + numeroFormateado + '</h2>' +
     '<div class="d-flex gap-2">' +
-    '<button class="btn btn-primary" onclick="descargarPDF()">' +
+    '<button class="btn btn-danger btn-lg" onclick="descargarPDF()">' +
     '<i class="fas fa-download me-2"></i>Descargar PDF' +
     '</button>' +
-    '<button class="btn btn-secondary" onclick="window.print()">' +
+    '<button class="btn btn-danger btn-lg" onclick="window.print()">' +
     '<i class="fas fa-print me-2"></i>Imprimir' +
     '</button>' +
     '</div>' +
@@ -184,8 +204,6 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '<hr>' +
     '<h6 class="fw-bold">ESTADO DE LA ORDEN</h6>' +
     '<p><span class="badge ' + estadoClass + ' fs-6">' + (orden.estado || 'N/A') + '</span></p>' +
-    ((orden.estado_trabajo === 'Cerrada') ? '<p><span class="badge bg-success fs-6">Orden cerrada</span></p>' : '') +
-    ((orden.fecha_completado) ? '<p><strong>Fecha de cierre:</strong> ' + orden.fecha_completado + '</p>' : '') +
     '</div>' +
     '</div>' +
     '<hr>' +
@@ -222,6 +240,10 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '</div>' +
     '</div>' +
     (orden.metodo_pago ? '<p class="text-center mt-2"><strong>Método de Pago:</strong> ' + orden.metodo_pago + '</p>' : '') +
+    '</div>' +
+    '<div class="bg-white border border-slate-200 rounded-3xl p-4 mb-4">' +
+    '<h6 class="fw-bold">Notas de Cierre</h6>' +
+    notasHtml +
     '</div>' +
     firmaHtml +
     '<hr>' +

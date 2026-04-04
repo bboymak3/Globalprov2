@@ -2,9 +2,6 @@ export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const token = url.searchParams.get('token');
-  const notas = url.searchParams.get('notas');
-  const pagoCompletado = url.searchParams.get('pago_completado') === 'true';
-  const metodoPago = url.searchParams.get('metodo_pago');
 
   if (!token) {
     return new Response('Token no proporcionado', { status: 400 });
@@ -32,8 +29,8 @@ export async function onRequestGet(context) {
     const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
     const tieneFirma = !!orden.firma_imagen;
 
-    // Generar HTML con la información adicional
-    const html = getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas, pagoCompletado, metodoPago);
+    // Generar HTML
+    const html = getApprovalPage(orden, numeroFormateado, token, tieneFirma);
 
     return new Response(html, {
       headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -49,9 +46,6 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const token = url.searchParams.get('token');
-  const notas = url.searchParams.get('notas');
-  const pagoCompletado = url.searchParams.get('pago_completado') === 'true';
-  const metodoPago = url.searchParams.get('metodo_pago');
 
   if (!token) {
     return new Response(JSON.stringify({ success: false, error: 'Token no proporcionado' }), {
@@ -73,7 +67,7 @@ export async function onRequestPost(context) {
 
     // Buscar orden y verificar token
     const orden = await env.DB.prepare(
-      "SELECT id, estado, estado_trabajo, cliente_telefono, notas FROM OrdenesTrabajo WHERE token_firma_tecnico = ?"
+      "SELECT id, estado, estado_trabajo, cliente_telefono FROM OrdenesTrabajo WHERE token_firma_tecnico = ?"
     ).bind(token).first();
 
     if (!orden) {
@@ -85,32 +79,13 @@ export async function onRequestPost(context) {
 
     const esPrimeraVez = !orden.firma_imagen;
 
-    // Aplicar notas de cierre si existen
-    let notasActualizadas = orden.notas || '';
-    if (notas) {
-      notasActualizadas = notasActualizadas ? `${notasActualizadas}\nCierre: ${notas}` : `Cierre: ${notas}`;
-    }
-
-    // Guardar firma y cerrar la orden
+    // Guardar firma y actualizar estado
     await env.DB.prepare(`
       UPDATE OrdenesTrabajo
-      SET firma_imagen = ?, estado = 'Aprobada', estado_trabajo = 'Cerrada',
-          fecha_aprobacion = datetime('now'), fecha_completado = datetime('now'),
-          notas = ?, pagado = ?, metodo_pago = ?
+      SET firma_imagen = ?, estado = 'Aprobada', estado_trabajo = 'Aprobada',
+          fecha_aprobacion = datetime('now')
       WHERE id = ?
-    `).bind(firma, notasActualizadas, pagoCompletado ? 1 : 0, metodoPago || null, orden.id).run();
-
-    // Registrar en seguimiento
-    await env.DB.prepare(`
-      INSERT INTO SeguimientoTrabajo (orden_id, tecnico_id, estado_anterior, estado_nuevo, observaciones)
-      VALUES (?, (SELECT tecnico_asignado_id FROM OrdenesTrabajo WHERE id = ?), ?, ?, ?)
-    `).bind(
-      orden.id,
-      orden.id,
-      orden.estado_trabajo,
-      'Cerrada',
-      `Firma del cliente y cierre final. ${notas ? 'Notas: ' + notas : ''}`
-    ).run();
+    `).bind(firma, orden.id).run();
 
     // Si es la primera vez que firma, enviar notificación
     if (esPrimeraVez) {
@@ -121,7 +96,7 @@ export async function onRequestPost(context) {
     return new Response(JSON.stringify({
       success: true,
       es_primera_vez: esPrimeraVez,
-      mensaje: 'Orden aceptada y cerrada correctamente'
+      mensaje: 'Orden aprobada correctamente'
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
@@ -168,7 +143,7 @@ function getHTMLResponse(titulo, mensaje, esExito) {
   });
 }
 
-function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = null, pagoCompletado = null, metodoPago = null) {
+function getApprovalPage(orden, numeroFormateado, token, tieneFirma) {
   const estadoClass = obtenerClaseEstado(orden.estado_trabajo);
 
   // Construir HTML de trabajos
@@ -183,13 +158,13 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = nul
 
   let contenidoPrincipal = '';
 
-  if (orden.estado_trabajo === 'Cerrada') {
+  if (tieneFirma) {
     contenidoPrincipal = '' +
       '<div class="text-center py-5">' +
       '<div style="font-size: 5rem; color: #28a745;">✓</div>' +
-      '<h3 class="mt-4">¡Orden Cerrada!</h3>' +
-      '<p class="lead">Esta orden ya ha sido firmada y cerrada.</p>' +
-      '<p class="text-muted">Número de Orden: ' + numeroFormateado + '</p>' +
+      '<h3 class="mt-4">¡Orden Aprobada!</h3>' +
+      '<p class="lead">Orden N° ' + numeroFormateado + '</p>' +
+      '<p class="text-muted">Esta orden ya ha sido firmada y aprobada.</p>' +
       '<a href="/ver-ot?token=' + token + '" class="btn btn-primary mt-3">' +
       '<i class="fas fa-file-pdf me-2"></i>Ver Orden de Trabajo' +
       '</a>' +
@@ -202,12 +177,8 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = nul
       'Al firmar, usted autoriza los trabajos indicados y sus montos.</p>' +
       '</div>' +
       '<div class="card mb-4">' +
-      '<div class="card-header">' +
-      '<h6 class="mb-0"><i class="fas fa-signature me-2"></i>Firma del Cliente</h6>' +
-      '</div>' +
       '<div class="card-body">' +
-      '<p class="text-muted">Utilice el mouse o toque la pantalla para firmar en el área a continuación:</p>' +
-      '<canvas id="firma-canvas" style="width: 100%; height: 200px; border: 2px dashed #ccc; border-radius: 10px;"></canvas>' +
+      '<canvas id="firma-canvas" class="signature-canvas w-100" style="height: 200px; border: 2px dashed #ccc; border-radius: 10px;"></canvas>' +
       '<button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="limpiarFirma()">' +
       '<i class="fas fa-eraser me-2"></i>Limpiar Firma' +
       '</button>' +
@@ -271,8 +242,6 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = nul
     '<p><strong>Total:</strong> $' + ((orden.monto_total || 0).toLocaleString('es-CL')) + '</p>' +
     '<p><strong>Abono:</strong> $' + ((orden.monto_abono || 0).toLocaleString('es-CL')) + '</p>' +
     '<p><strong>Restante:</strong> $' + ((orden.monto_restante || 0).toLocaleString('es-CL')) + '</p>' +
-    (notas ? '<hr><h6 class="fw-bold">NOTAS DEL TÉCNICO</h6><p>' + notas.replace(/\n/g, '<br>') + '</p>' : '') +
-    (pagoCompletado !== null ? '<hr><h6 class="fw-bold">PAGO</h6><p>' + (pagoCompletado ? 'Pago completado' : 'Pago pendiente') + (metodoPago ? ' (' + metodoPago + ')' : '') + '</p>' : '') +
     '</div>' +
     '</div>' +
     contenidoPrincipal +
@@ -286,7 +255,7 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = nul
     'if (canvas) {' +
     'const rect = canvas.getBoundingClientRect();' +
     'canvas.width = rect.width;' +
-    'canvas.height = 200;' +
+    'canvas.height = rect.height;' +
     'ctx = canvas.getContext("2d");' +
     'ctx.strokeStyle = "#000";' +
     'ctx.lineWidth = 2;' +

@@ -64,18 +64,9 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Determinar columna de acceso (migración pin -> codigo_acceso)
-    const tableInfo = await env.DB.prepare("PRAGMA table_info(Tecnicos)").all();
-    const columnNames = (tableInfo.results || []).map(col => col.name);
-    const accessColumn = columnNames.includes('codigo_acceso') ? 'codigo_acceso' : columnNames.includes('pin') ? 'pin' : null;
-
-    if (!accessColumn) {
-      throw new Error('Tabla Tecnicos no tiene columna de acceso (codigo_acceso/pin)');
-    }
-
     // Crear técnico
     await env.DB.prepare(`
-      INSERT INTO Tecnicos (nombre, telefono, email, ${accessColumn}, activo)
+      INSERT INTO Tecnicos (nombre, telefono, email, pin, activo)
       VALUES (?, ?, ?, ?, 1)
     `).bind(
       data.nombre,

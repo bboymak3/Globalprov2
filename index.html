@@ -88,15 +88,15 @@
         }
 
         .numero-orden {
-            font-size: 1.5rem;
+            font-size: 2.5rem;
             font-weight: bold;
             color: var(--gp-red);
             text-align: center;
             background: linear-gradient(135deg, #fff 0%, #f8f8f8 100%);
-            border: 2px solid var(--gp-red);
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 15px;
+            border: 3px solid var(--gp-red);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
         }
 
         .numero-orden-small {
@@ -232,6 +232,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="mostrarSeccion('tecnicos')">Gestión Técnicos</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="mostrarSeccion('liquidar')">Liquidar Técnicos</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -242,7 +245,7 @@
         <div id="seccion-crear">
             <div class="row">
                 <div class="col-12 text-center mb-4">
-                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">GP-OT-2026</h1>
+                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">GP - OT</h1>
                     <p class="text-muted">Complete el formulario para crear una nueva orden de trabajo</p>
                 </div>
             </div>
@@ -270,7 +273,7 @@
                                     <i class="fas fa-id-card me-2"></i>PATENTE / PLACA
                                 </label>
                                 <input type="text" class="form-control patente-input" id="patente" 
-                                       placeholder="" required 
+                                       placeholder="Ej: GP LT 55" required 
                                        onkeyup="this.value = this.value.toUpperCase(); buscarVehiculoPorPatente(this.value);">
                                 <div class="text-center mt-2">
                                     <button type="button" class="btn btn-outline-primary" onclick="buscarVehiculoPorPatente(document.getElementById('patente').value);">
@@ -337,13 +340,6 @@
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Teléfono <span class="text-danger">*</span></label>
                                 <input type="tel" class="form-control" id="telefono" required placeholder="+56 9 1234 5678">
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-12 mb-3">
-                                <label class="form-label">Dirección <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="direccion" required placeholder="Ej: Calle Principal 123, Ciudad">
                             </div>
                         </div>
 
@@ -666,29 +662,32 @@
 
                 <!-- Lista de técnicos y asignación de órdenes -->
                 <div class="col-md-8">
-                    <!-- Órdenes disponibles -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <i class="fas fa-list me-2"></i>Órdenes Disponibles
-                        </div>
-                        <div class="card-body">
-                            <div id="lista-ordenes-disponibles">
-                                <div class="text-center text-muted py-3">
-                                    <i class="fas fa-spinner fa-spin"></i> Cargando órdenes...
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Lista de técnicos -->
                     <div class="card mb-4">
-                        <div class="card-header">
-                            <i class="fas fa-users me-2"></i>Técnicos Registrados
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-users me-2"></i>Técnicos Registrados</span>
                         </div>
                         <div class="card-body">
                             <div id="lista-tecnicos">
                                 <div class="text-center text-muted py-3">
                                     <i class="fas fa-spinner fa-spin"></i> Cargando técnicos...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Órdenes Aprobadas Listas para Asignar -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center bg-success text-white">
+                            <span><i class="fas fa-clipboard-check me-2"></i>Órdenes Aprobadas Listas para Asignar</span>
+                            <button class="btn btn-sm btn-light" onclick="cargarOrdenesAprobadas()">
+                                <i class="fas fa-sync-alt me-1"></i>Actualizar
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="lista-ordenes-aprobadas" style="max-height: 400px; overflow-y: auto;">
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando órdenes...
                                 </div>
                             </div>
                         </div>
@@ -720,6 +719,98 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Sección: Liquidar Técnicos -->
+    <div id="seccion-liquidar" style="display: none;">
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h1 class="display-4 fw-bold" style="color: var(--gp-red);">Liquidar Técnicos</h1>
+                <p class="text-muted">Resumen de órdenes por técnico, monto generado y ganancia del 40%</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-hand-holding-usd me-2"></i>Resumen de Liquidación</span>
+                <button class="btn btn-sm btn-light" onclick="cargarLiquidaciones()">
+                    <i class="fas fa-sync-alt me-1"></i>Actualizar
+                </button>
+            </div>
+            <div class="card-body">
+                <form id="form-liquidacion-filtros" class="row gy-3 gx-3 align-items-end mb-4" onsubmit="event.preventDefault(); cargarLiquidaciones();">
+                    <div class="col-md-2">
+                        <label class="form-label">Periodo</label>
+                        <select id="filtro-periodo" class="form-select">
+                            <option value="">Todas</option>
+                            <option value="hoy">Hoy</option>
+                            <option value="mes">Este Mes</option>
+                            <option value="ano">Este Año</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Desde</label>
+                        <input id="filtro-fecha-inicio" type="date" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Hasta</label>
+                        <input id="filtro-fecha-fin" type="date" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Técnico</label>
+                        <select id="filtro-tecnico-id" class="form-select">
+                            <option value="">Todos los técnicos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" type="submit">
+                            <i class="fas fa-filter me-2"></i>Aplicar filtros
+                        </button>
+                    </div>
+                </form>
+                <div id="resumen-liquidacion" class="row gy-3">
+                    <div class="col-md-3">
+                        <div class="border rounded-3 p-3 text-center">
+                            <div class="text-muted">Técnicos</div>
+                            <div class="h4" id="liquidar-total-tecnicos">0</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded-3 p-3 text-center">
+                            <div class="text-muted">Órdenes Realizadas</div>
+                            <div class="h4" id="liquidar-total-ordenes">0</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded-3 p-3 text-center">
+                            <div class="text-muted">Monto Generado</div>
+                            <div class="h4" id="liquidar-total-monto">$0</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded-3 p-3 text-center">
+                            <div class="text-muted">Ganancia 40%</div>
+                            <div class="h4" id="liquidar-total-ganancia">$0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-2"></i>Liquidación por Técnico
+            </div>
+            <div class="card-body">
+                <div id="tabla-liquidacion">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-spinner fa-spin"></i> Cargando liquidaciones...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="detalle-ordenes-tecnico"></div>
     </div>
 
     <!-- Modal: Ver Orden -->
