@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Pro Automotriz - Técnico</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px 30px;
+        }
+        .login-logo {
+            font-size: 3rem;
+            color: #a80000;
+            margin-bottom: 20px;
+        }
+        .pin-input {
+            font-size: 2rem;
+            letter-spacing: 10px;
+            text-align: center;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .pin-input:focus {
+            border-color: #a80000;
+            box-shadow: 0 0 0 0.2rem rgba(168, 0, 0, 0.25);
+        }
+        .app-header {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .orden-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            padding: 20px;
+            transition: transform 0.2s;
+        }
+        .orden-card:active {
+            transform: scale(0.98);
+        }
+        .estado-badge {
+            font-size: 0.75rem;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .estado-pendiente-visita { background: #fff3cd; color: #856404; }
+        .estado-en-sitio { background: #d1ecf1; color: #0c5460; }
+        .estado-en-progreso { background: #cce5ff; color: #004085; }
+        .estado-pendiente-piezas { background: #e2e3e5; color: #383d41; }
+        .estado-completada { background: #d4edda; color: #155724; }
+        .estado-aprobada { background: #28a745; color: white; }
+        .estado-no-completada { background: #f8d7da; color: #721c24; }
+        .action-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        .btn-gps { background: #28a745; color: white; }
+        .btn-iniciar { background: #007bff; color: white; }
+        .btn-completar { background: #28a745; color: white; }
+        .btn-no-completar { background: #dc3545; color: white; }
+        .btn-fotos { background: #17a2b8; color: white; }
+        .btn-notas { background: #6c757d; color: white; }
+        .btn-firma { background: #a80000; color: white; }
+        .detail-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        .detail-row i {
+            width: 25px;
+            color: #a80000;
+        }
+        .signature-canvas {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            background: white;
+            touch-action: none;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            color: #666;
+            font-weight: 600;
+        }
+        .nav-tabs .nav-link.active {
+            background: #a80000;
+            color: white;
+            border-radius: 10px;
+        }
+        .tab-content {
+            padding: 15px 0;
+        }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .photo-item {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding: 10px 0;
+            z-index: 1000;
+        }
+        .bottom-nav .nav-item {
+            text-align: center;
+            color: #666;
+            font-size: 0.8rem;
+        }
+        .bottom-nav .nav-item.active {
+            color: #a80000;
+        }
+        .bottom-nav .nav-item i {
+            font-size: 1.5rem;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .note-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .note-time {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        #map-container {
+            height: 300px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Pantalla de Login -->
+    <div id="login-screen" class="login-container">
+        <div class="login-card text-center">
+            <i class="fas fa-car-side login-logo"></i>
+            <h4 class="mb-4">Global Pro Automotriz</h4>
+            <p class="text-muted mb-4">Acceso de Técnicos</p>
+            <div class="mb-3">
+                <input type="tel" id="telefono-login" class="form-control form-control-lg mb-3"
+                       placeholder="Teléfono (ej: +56912345678)" maxlength="15">
+                <input type="password" id="pin-login" class="form-control form-control-lg pin-input"
+                       placeholder="PIN" maxlength="4" pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <button id="btn-login" class="btn btn-danger btn-lg w-100 mt-3" onclick="login()">
+                Ingresar
+            </button>
+            <p id="login-error" class="text-danger mt-3 small" style="display: none;"></p>
+        </div>
+    </div>
+
+    <!-- Pantalla Principal de la App -->
+    <div id="app-screen" style="display: none;">
+        <!-- Header -->
+        <div class="app-header d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0" style="color: #a80000; font-weight: bold;">Global Pro Técnico</h5>
+                <small class="text-muted" id="tecnico-nombre"></small>
+            </div>
+            <button class="btn btn-outline-danger btn-sm" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+
+        <!-- Contenido Principal -->
+        <div class="container pb-5" style="padding-top: 15px;">
+            <!-- Tabs de navegación -->
+            <ul class="nav nav-pills mb-3" id="main-tabs">
+                <li class="nav-item flex-fill text-center">
+                    <a class="nav-link active" href="#" onclick="showTab('pendientes')">
+                        <i class="fas fa-clock"></i> Pendientes
+                    </a>
+                </li>
+                <li class="nav-item flex-fill text-center">
+                    <a class="nav-link" href="#" onclick="showTab('en-curso')">
+                        <i class="fas fa-tools"></i> En Curso
+                    </a>
+                </li>
+                <li class="nav-item flex-fill text-center">
+                    <a class="nav-link" href="#" onclick="showTab('completadas')">
+                        <i class="fas fa-check-circle"></i> Completadas
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Lista de órdenes pendientes -->
+            <div id="tab-pendientes" class="tab-content">
+                <div id="ordenes-pendientes"></div>
+            </div>
+
+            <!-- Lista de órdenes en curso -->
+            <div id="tab-en-curso" class="tab-content" style="display: none;">
+                <div id="ordenes-en-curso"></div>
+            </div>
+
+            <!-- Lista de órdenes completadas -->
+            <div id="tab-completadas" class="tab-content" style="display: none;">
+                <div id="ordenes-completadas"></div>
+            </div>
+        </div>
+
+        <!-- Navegación inferior -->
+        <div class="bottom-nav">
+            <div class="row g-0">
+                <div class="col-4 nav-item active" onclick="showTab('pendientes')">
+                    <i class="fas fa-clock"></i>
+                    Pendientes
+                </div>
+                <div class="col-4 nav-item" onclick="showTab('en-curso')">
+                    <i class="fas fa-tools"></i>
+                    En Curso
+                </div>
+                <div class="col-4 nav-item" onclick="showTab('completadas')">
+                    <i class="fas fa-check-circle"></i>
+                    Listo
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalle de Orden -->
+    <div class="modal fade" id="modalOrden" tabindex="-1">
+        <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Orden de Trabajo #<span id="modal-numero-orden"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <!-- Información del cliente y vehículo -->
+                    <div class="orden-card">
+                        <div class="detail-row">
+                            <i class="fas fa-user"></i>
+                            <span id="modal-cliente" class="fw-bold"></span>
+                        </div>
+                        <div class="detail-row">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span id="modal-direccion"></span>
+                        </div>
+                        <div class="detail-row">
+                            <i class="fas fa-car"></i>
+                            <span id="modal-vehiculo"></span>
+                            <span id="modal-patente" class="ms-2 badge bg-danger"></span>
+                        </div>
+                        <div class="detail-row">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="modal-estado" class="estado-badge"></span>
+                        </div>
+                        <div class="detail-row">
+                            <i class="fas fa-check-square"></i>
+                            <div class="form-check form-switch ms-2">
+                                <input class="form-check-input" type="checkbox" id="modal-orden-cerrada" disabled>
+                                <label class="form-check-label" for="modal-orden-cerrada">Orden cerrada</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mapa -->
+                    <div id="map-container">
+                        <iframe id="map-frame" width="100%" height="100%" style="border: 0;"></iframe>
+                    </div>
+
+                    <!-- Acciones según estado -->
+                    <div id="acciones-container"></div>
+
+                    <!-- Trabajos a realizar -->
+                    <div class="orden-card">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-tools me-2"></i>Trabajos a Realizar</h6>
+                        <div id="modal-trabajos"></div>
+                    </div>
+
+                    <!-- Notas de Cierre -->
+                    <div class="orden-card">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-file-signature me-2"></i>Notas de Cierre</h6>
+                        <div id="modal-notas"></div>
+                    </div>
+
+                    <!-- Sección de fotos -->
+                    <div class="orden-card">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-camera me-2"></i>Fotos</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <button class="btn btn-fotos action-btn" onclick="tomarFoto('antes')">
+                                    <i class="fas fa-camera me-2"></i>Antes
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-fotos action-btn" onclick="tomarFoto('despues')">
+                                    <i class="fas fa-camera me-2"></i>Después
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-fotos action-btn" onclick="tomarFoto('evidencia')">
+                                    <i class="fas fa-camera me-2"></i>Evidencia
+                                </button>
+                            </div>
+                        </div>
+                        <div id="fotos-grid" class="photo-grid"></div>
+                    </div>
+
+                    <!-- Sección de notas -->
+                    <div class="orden-card">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-sticky-note me-2"></i>Notas</h6>
+                        <div class="input-group mb-3">
+                            <input type="text" id="nueva-nota" class="form-control"
+                                   placeholder="Agregar nota...">
+                            <button class="btn btn-outline-danger" onclick="agregarNota()">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div id="notas-lista"></div>
+                    </div>
+
+                    <!-- Historial de seguimiento -->
+                    <div class="orden-card">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-history me-2"></i>Historial</h6>
+                        <div id="historial-lista"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de No Completada -->
+    <div class="modal fade" id="modalNoCompletada" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">¿No se pudo completar?</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Motivo:</label>
+                        <select id="motivo-no-completada" class="form-select">
+                            <option value="">Seleccione un motivo...</option>
+                            <option value="Faltan piezas">Faltan piezas</option>
+                            <option value="Vehículo no disponible">Vehículo no disponible</option>
+                            <option value="Problema técnico">Problema técnico</option>
+                            <option value="Cliente no disponible">Cliente no disponible</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Detalles adicionales:</label>
+                        <textarea id="detalles-no-completada" class="form-control"
+                                  rows="3" placeholder="Explique qué sucedió..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" onclick="guardarNoCompletada()">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Reportar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para tomar foto -->
+    <input type="file" id="foto-input" accept="image/*" capture="environment" style="display: none;">
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
