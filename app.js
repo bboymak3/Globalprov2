@@ -1268,9 +1268,6 @@ function mostrarOrdenesTecnico(ordenes, tecnicoNombre) {
                 <td>
                     <span class="badge ${estadoClass}">${estadoIcon} ${orden.estado}</span>
                 </td>
-                <td class="text-center">
-                    ${iconoCompletada}
-                </td>
                 <td class="text-end">
                     <strong>${formatearMontoConSimbolo(orden.monto_total)}</strong>
                 </td>
