@@ -45,7 +45,7 @@ export async function onRequestGet(context) {
         t.telefono,
         COUNT(ot.id) as total_ordenes,
         SUM(ot.monto_total) as total_monto,
-        SUM(CASE WHEN ot.estado = 'completada' THEN 1 ELSE 0 END) as ordenes_completadas,
+        SUM(CASE WHEN ot.estado IN ('completada', 'Cerrada') THEN 1 ELSE 0 END) as ordenes_completadas,
         SUM(CASE WHEN ot.estado = 'en_proceso' THEN 1 ELSE 0 END) as ordenes_en_proceso,
         SUM(CASE WHEN ot.estado = 'Aprobada' THEN 1 ELSE 0 END) as ordenes_aprobadas,
         AVG(ot.monto_total) as promedio_monto,
@@ -53,7 +53,7 @@ export async function onRequestGet(context) {
       FROM Tecnicos t
       LEFT JOIN OrdenesTrabajo ot ON t.id = ot.tecnico_asignado_id
         AND ot.fecha_creacion >= ?
-        AND ot.estado IN ('Aprobada', 'completada', 'en_proceso')
+        AND ot.estado IN ('Aprobada', 'completada', 'en_proceso', 'Cerrada')
       WHERE t.activo = 1
     `;
 
