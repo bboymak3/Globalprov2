@@ -1245,6 +1245,7 @@ function mostrarOrdenesTecnico(ordenes, tecnicoNombre) {
                         <th class="text-end">Total</th>
                         <th>Fecha Creación</th>
                         <th>Fecha Completado</th>
+                        <th class="text-center">Completada</th>
                         <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
@@ -1254,6 +1255,13 @@ function mostrarOrdenesTecnico(ordenes, tecnicoNombre) {
     ordenes.forEach(orden => {
         const estadoClass = obtenerClaseEstado(orden.estado);
         const estadoIcon = obtenerIconoEstado(orden.estado);
+        
+        // Determinar si la orden está completada
+        const estaCompletada = (orden.estado === 'completada' || orden.estado === 'Cerrada' || 
+                               orden.estado_trabajo === 'Completada' || orden.estado_trabajo === 'Cerrada');
+        const iconoCompletada = estaCompletada ? 
+            '<i class="fas fa-check-circle text-success" title="Completada"></i>' : 
+            '<i class="fas fa-times-circle text-danger" title="No completada"></i>';
 
         html += `
             <tr>
@@ -1273,6 +1281,9 @@ function mostrarOrdenesTecnico(ordenes, tecnicoNombre) {
                 </td>
                 <td>${orden.fecha_creacion_formateada}</td>
                 <td>${orden.fecha_completado_formateada || 'Pendiente'}</td>
+                <td class="text-center">
+                    ${iconoCompletada}
+                </td>
                 <td class="text-center">
                     <button class="btn btn-sm btn-outline-primary" onclick="verOrdenDesdeModalTecnico(${orden.id})" title="Ver orden completa">
                         <i class="fas fa-eye"></i>
