@@ -99,21 +99,29 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
 
   checklistHtml += '</ul>';
 
-  // Firma
-  let firmaHtml = '';
-  if (orden.firma_imagen) {
-    firmaHtml = '' +
-      '<div class="text-center mt-4 p-4 bg-light rounded">' +
-      '<h6 class="fw-bold"><i class="fas fa-signature me-2"></i>Firma del Cliente</h6>' +
-      '<img src="' + orden.firma_imagen + '" alt="Firma del cliente" style="max-width: 300px; border: 1px solid #ddd; border-radius: 5px;">' +
-      '<p class="small text-muted mt-2">Fecha de aprobación: ' + (orden.fecha_aprobacion || 'N/A') + '</p>' +
-      '</div>';
-  } else {
-    firmaHtml = '' +
-      '<div class="alert alert-warning mt-4">' +
-      '<i class="fas fa-exclamation-triangle me-2"></i>' +
-      'Esta orden aún no ha sido firmada por el cliente.' +
-      '</div>';
+  // Procesar notas
+  let notasCierre = '';
+  let otrasNotas = '';
+  if (orden.notas) {
+    const notasArray = orden.notas.split('\n');
+    for (const nota of notasArray) {
+      if (nota.startsWith('Cierre: ')) {
+        notasCierre = nota.replace('Cierre: ', '');
+      } else {
+        otrasNotas += (otrasNotas ? '\n' : '') + nota;
+      }
+    }
+  }
+
+  let notasHtml = '';
+  if (notasCierre || otrasNotas) {
+    notasHtml = '<hr><h6 class="fw-bold text-danger">NOTAS</h6>';
+    if (notasCierre) {
+      notasHtml += '<p><strong>Notas de cierre:</strong> ' + notasCierre + '</p>';
+    }
+    if (otrasNotas) {
+      notasHtml += '<p><strong>Otras notas:</strong> ' + otrasNotas.replace(/\n/g, '<br>') + '</p>';
+    }
   }
 
   const html = '' +
@@ -224,6 +232,7 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '</div>' +
     (orden.metodo_pago ? '<p class="text-center mt-2"><strong>Método de Pago:</strong> ' + orden.metodo_pago + '</p>' : '') +
     '</div>' +
+    notasHtml +
     firmaHtml +
     '<hr>' +
     '<div class="alert alert-info">' +
@@ -298,6 +307,32 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '  doc.text("Total: $" + ((ordenData.monto_total || 0).toLocaleString("es-CL")), leftMargin, yPos); yPos += 4;' +
     '  doc.text("Abono: $" + ((ordenData.monto_abono || 0).toLocaleString("es-CL")), leftMargin, yPos); yPos += 4;' +
     '  doc.text("Restante: $" + ((ordenData.monto_restante || 0).toLocaleString("es-CL")), leftMargin, yPos); yPos += 10;' +
+    '  const notas = ' + JSON.stringify(orden.notas || '') + ';' +
+    '  if (notas) {' +
+    '    const notasArray = notas.split("\\n");' +
+    '    let notasCierre = "";' +
+    '    let otrasNotas = "";' +
+    '    for (const nota of notasArray) {' +
+    '      if (nota.startsWith("Cierre: ")) {' +
+    '        notasCierre = nota.replace("Cierre: ", "");' +
+    '      } else {' +
+    '        otrasNotas += (otrasNotas ? "\\n" : "") + nota;' +
+    '      }' +
+    '    }' +
+    '    doc.setFontSize(9);' +
+    '    doc.setFont(undefined, "bold");' +
+    '    doc.text("5. NOTAS", leftMargin, yPos);' +
+    '    yPos += 6;' +
+    '    doc.setFont(undefined, "normal");' +
+    '    doc.setFontSize(7);' +
+    '    if (notasCierre) {' +
+    '      doc.text("Notas de cierre: " + notasCierre, leftMargin, yPos); yPos += 4;' +
+    '    }' +
+    '    if (otrasNotas) {' +
+    '      doc.text("Otras notas: " + otrasNotas.replace(/\\n/g, ", "), leftMargin, yPos); yPos += 4;' +
+    '    }' +
+    '    yPos += 6;' +
+    '  }' +
     '  if (ordenData.firma_imagen) {' +
     '    try {' +
     '      doc.text("Firma del Cliente:", leftMargin, yPos); yPos += 4;' +

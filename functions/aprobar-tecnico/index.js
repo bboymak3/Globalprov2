@@ -183,6 +183,19 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = nul
 
   let contenidoPrincipal = '';
 
+  let firmaCerradaHtml = '';
+  if (orden.firma_imagen) {
+    firmaCerradaHtml = '' +
+      '<div class="card mb-4">' +
+      '<div class="card-header bg-light">' +
+      '<h6 class="mb-0"><i class="fas fa-signature me-2"></i>Firma del Cliente</h6>' +
+      '</div>' +
+      '<div class="card-body text-center">' +
+      '<img src="' + orden.firma_imagen + '" alt="Firma del cliente" style="max-width: 100%; max-height: 260px; border: 1px solid #ddd; border-radius: 10px;" />' +
+      '</div>' +
+      '</div>';
+  }
+
   if (orden.estado_trabajo === 'Cerrada') {
     contenidoPrincipal = '' +
       '<div class="text-center py-5">' +
@@ -190,9 +203,11 @@ function getApprovalPage(orden, numeroFormateado, token, tieneFirma, notas = nul
       '<h3 class="mt-4">¡Orden Cerrada!</h3>' +
       '<p class="lead">Esta orden ya ha sido firmada y cerrada.</p>' +
       '<p class="text-muted">Número de Orden: ' + numeroFormateado + '</p>' +
-      '<a href="/ver-ot?token=' + token + '" class="btn btn-primary mt-3">' +
-      '<i class="fas fa-file-pdf me-2"></i>Ver Orden de Trabajo' +
-      '</a>' +
+      firmaCerradaHtml +
+      '<p class="mt-4">' +
+      '<a href="/ver-ot?token=' + token + '" class="text-decoration-none fw-bold">' +
+      '<i class="fas fa-file-pdf me-2"></i>Ir a la OT para descargar el PDF</a>' +
+      '</p>' +
       '</div>';
   } else {
     contenidoPrincipal = '' +
