@@ -27,19 +27,21 @@ export async function onRequestGet(context) {
       });
     }
 
+    const notas = await getNotasForOrden(env, orden.id);
+
     if (orden.estado === 'Aprobada') {
-      return new Response(getApprovedPage(orden), {
+      return new Response(getApprovedPage(orden, notas), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
       });
     }
 
     if (orden.estado === 'Cancelada') {
-      return new Response(getCancelledPage(orden), {
+      return new Response(getCancelledPage(orden, notas), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
       });
     }
 
-    return new Response(getApprovalPage(orden, token), {
+    return new Response(getApprovalPage(orden, token, notas), {
       headers: { 'Content-Type': 'text/html; charset=utf-8' }
     });
 
@@ -56,14 +58,38 @@ function getErrorPage(title, message) {
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Error</title></head><body style="font-family:Arial,sans-serif;text-align:center;padding:50px;background:#f3f4f6;"><h1 style="color:#dc2626;">' + title + '</h1><p style="color:#4b5563;">' + message + '</p></body></html>';
 }
 
-function getApprovedPage(orden) {
+async function getNotasForOrden(env, ordenId) {
+  const notasData = await env.DB.prepare(
+    'SELECT nota, fecha_nota FROM NotasTrabajo WHERE orden_id = ? ORDER BY fecha_nota ASC'
+  ).bind(ordenId).all();
+  return notasData.results || [];
+}
+
+function renderNotasHtml(notas) {
+  if (!notas || notas.length === 0) {
+    return '<p class="text-sm text-gray-600">No hay notas de cierre registradas.</p>';
+  }
+
+  let html = '<ul class="space-y-2 text-sm text-gray-700">';
+  notas.forEach(nota => {
+    const fecha = nota.fecha_nota ? new Date(nota.fecha_nota).toLocaleString('es-CL') : 'Sin fecha';
+    html += '<li><strong>' + fecha + ':</strong> ' + (nota.nota || 'Sin detalle') + '</li>';
+  });
+  html += '</ul>';
+  return html;
+}
+
+function getApprovedPage(orden, notas) {
   const n = String(orden.numero_orden).padStart(6, '0');
   const cliente = orden.cliente_nombre || 'Cliente';
-  const fechaCreacion = orden.fecha_creacion || 'N/A';
+  const fechaCreacion = orden.fecha_creacion || orden.fecha_ingreso || 'N/A';
   const fechaAprobacion = orden.fecha_aprobacion || 'N/A';
   const total = (orden.monto_total || 0).toLocaleString('es-CL');
+  const abono = (orden.monto_abono || 0).toLocaleString('es-CL');
+  const restante = (orden.monto_restante || 0).toLocaleString('es-CL');
   const verOtUrl = '/ver-ot?token=' + encodeURIComponent(orden.token);
   const firmaImg = orden.firma_imagen ? '<img src="' + orden.firma_imagen + '" style="max-width:240px;margin-top:20px;border:1px solid #ddd;border-radius:8px;">' : '<div class="text-sm text-gray-600 mt-3">No se registró imagen de firma.</div>';
+  const notasHtml = renderNotasHtml(notas);
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Aprobada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-slate-100 min-h-screen p-4"><div class="max-w-3xl mx-auto">' +
     '<div class="bg-white rounded-3xl shadow-2xl overflow-hidden">' +
@@ -99,13 +125,29 @@ function getApprovedPage(orden) {
     '        </div>' +
     '      </div>' +
     '    </div>' +
-    '    <div class="bg-slate-50 border border-slate-200 rounded-3xl p-5 mb-4">' +
+    '    <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">' +
+    '      <div class="col">' +
+    '        <div class="bg-red-50 border border-red-200 rounded-3xl p-4 text-center">' +
+    '          <p class="text-sm text-red-700 mb-1">Monto Total</p>' +
+    '          <p class="text-2xl font-bold text-red-800">$' + total + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="bg-white border border-slate-200 rounded-3xl p-4 text-center">' +
+    '          <p class="text-sm text-slate-500 mb-1">Abono</p>' +
+    '          <p class="text-2xl font-bold">$' + abono + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="bg-white border border-slate-200 rounded-3xl p-4 text-center">' +
+    '          <p class="text-sm text-slate-500 mb-1">Restante</p>' +
+    '          <p class="text-2xl font-bold">$' + restante + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '    </div>' +
+    '    <div class="bg-white border border-slate-200 rounded-3xl p-5 mb-4">' +
     '      <div class="d-flex justify-content-between align-items-center mb-3">' +
     '        <div>' +
-    '          <p class="text-sm text-slate-500 mb-1">Monto total</p>' +
-    '          <p class="text-2xl font-bold">$' + total + '</p>' +
-    '        </div>' +
-    '        <div class="text-end">' +
     '          <p class="text-sm text-slate-500 mb-1">Estado</p>' +
     '          <span class="badge bg-success text-white">Aprobada</span>' +
     '        </div>' +
@@ -115,12 +157,16 @@ function getApprovedPage(orden) {
     '        <div class="text-center">' + firmaImg + '</div>' +
     '      </div>' +
     '    </div>' +
+    '    <div class="bg-white border border-slate-200 rounded-3xl p-5 mb-4">' +
+    '      <h3 class="text-lg font-bold mb-2">Notas de Cierre</h3>' +
+    notasHtml +
+    '    </div>' +
     '    <div class="d-grid gap-3">' +
-    '      <a href="' + verOtUrl + '" class="btn btn-primary btn-lg">' +
+    '      <a href="' + verOtUrl + '" class="btn btn-danger btn-lg">' +
     '        <i class="fas fa-eye me-2"></i>Ver Orden</a>' +
-    '      <button type="button" onclick="window.print()" class="btn btn-outline-secondary btn-lg">' +
+    '      <button type="button" onclick="window.print()" class="btn btn-danger btn-lg">' +
     '        <i class="fas fa-print me-2"></i>Imprimir</button>' +
-    '      <a href="' + verOtUrl + '" class="btn btn-outline-success btn-lg">' +
+    '      <a href="' + verOtUrl + '" class="btn btn-danger btn-lg">' +
     '        <i class="fas fa-download me-2"></i>Descargar / Ver PDF</a>' +
     '    </div>' +
     '    <p class="text-center text-sm text-slate-500 mt-4">Puede volver a usar este mismo enlace para ver la orden cuando quiera.</p>' +
@@ -129,18 +175,31 @@ function getApprovedPage(orden) {
     '</div>';
 }
 
-function getCancelledPage(orden) {
+function getCancelledPage(orden, notas) {
   const n = String(orden.numero_orden).padStart(6, '0');
   const motivo = orden.motivo_cancelacion || 'No especificado';
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Cancelada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-red-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md"><div class="text-8xl mb-4">❌</div><h1 class="text-3xl font-black text-red-700 mb-2">Orden Cancelada</h1><p class="text-gray-600 mb-4">Esta orden de trabajo ha sido cancelada.</p><div class="bg-red-50 rounded-xl p-4 mb-6"><p class="text-sm text-gray-600">Orden N°</p><p class="text-2xl font-bold text-red-700">' + n + '</p><p class="text-xs text-gray-500 mt-2">Fecha: ' + (orden.fecha_cancelacion || 'N/A') + '</p></div><div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6"><p class="text-sm font-bold text-yellow-800">Motivo:</p><p class="text-sm text-yellow-700">' + motivo + '</p></div></div></body></html>';
+  const total = (orden.monto_total || 0).toLocaleString('es-CL');
+  const abono = (orden.monto_abono || 0).toLocaleString('es-CL');
+  const restante = (orden.monto_restante || 0).toLocaleString('es-CL');
+  const notasHtml = renderNotasHtml(notas);
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Cancelada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-red-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-lg"><div class="text-8xl mb-4">❌</div><h1 class="text-3xl font-black text-red-700 mb-2">Orden Cancelada</h1><p class="text-gray-600 mb-4">Esta orden de trabajo ha sido cancelada.</p><div class="bg-red-50 rounded-xl p-4 mb-4"><p class="text-sm text-gray-600">Orden N°</p><p class="text-2xl font-bold text-red-700">' + n + '</p><p class="text-xs text-gray-500 mt-2">Fecha: ' + (orden.fecha_cancelacion || 'N/A') + '</p></div>' +
+    '<div class="row row-cols-1 row-cols-md-3 g-3 mb-4">' +
+    '  <div class="col"><div class="bg-white border border-slate-200 rounded-3xl p-4"><p class="text-sm text-slate-500 mb-1">Total</p><p class="text-xl font-bold">$' + total + '</p></div></div>' +
+    '  <div class="col"><div class="bg-white border border-slate-200 rounded-3xl p-4"><p class="text-sm text-slate-500 mb-1">Abono</p><p class="text-xl font-bold">$' + abono + '</p></div></div>' +
+    '  <div class="col"><div class="bg-white border border-slate-200 rounded-3xl p-4"><p class="text-sm text-slate-500 mb-1">Restante</p><p class="text-xl font-bold">$' + restante + '</p></div></div>' +
+    '</div>' +
+    '<div class="bg-white border border-slate-200 rounded-3xl p-4 text-left mb-4"><h3 class="fw-bold mb-2">Notas de Cierre</h3>' + notasHtml + '</div>' +
+    '<div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6"><p class="text-sm font-bold text-yellow-800">Motivo:</p><p class="text-sm text-yellow-700">' + motivo + '</p></div></div></body></html>';
 }
 
-function getApprovalPage(orden, token) {
+function getApprovalPage(orden, token, notas) {
   const n = String(orden.numero_orden).padStart(6, '0');
   const cliente = orden.cliente_nombre || 'Cliente';
   const total = (orden.monto_total || 0).toLocaleString('es-CL');
   const abono = (orden.monto_abono || 0).toLocaleString('es-CL');
   const restante = (orden.monto_restante || 0).toLocaleString('es-CL');
+  const notasHtml = renderNotasHtml(notas);
 
   // Construir lista de trabajos
   var trabajos = [];
@@ -202,6 +261,10 @@ function getApprovalPage(orden, token) {
   html += '<p class="font-bold text-xl">$' + restante + '</p>';
   html += '</div>';
   html += '</div>';
+  html += '</div>';
+  html += '<div class="bg-white border border-slate-200 rounded-3xl p-4 mb-4">';
+  html += '<h3 class="font-bold text-lg mb-3 text-gray-800">📝 Notas del Técnico</h3>';
+  html += notasHtml;
   html += '</div>';
   html += '<div class="mb-6">';
   html += '<h3 class="font-bold text-lg mb-3 text-gray-800">🔧 Trabajos Seleccionados</h3>';

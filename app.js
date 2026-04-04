@@ -365,6 +365,8 @@ async function verOrden(ordenId) {
         const data = await response.json();
         
         if (data.orden) {
+            const notas = await cargarNotasOrden(data.orden.id);
+            data.orden.notas = notas;
             ordenActual = data.orden;
             mostrarOrdenEnModal(data.orden);
         }
@@ -374,6 +376,19 @@ async function verOrden(ordenId) {
     } finally {
         mostrarLoading(false);
     }
+}
+
+async function cargarNotasOrden(ordenId) {
+    try {
+        const response = await fetch(`${API_BASE}/tecnico/notas?orden_id=${ordenId}`);
+        const data = await response.json();
+        if (data.success && Array.isArray(data.notas)) {
+            return data.notas;
+        }
+    } catch (error) {
+        console.error('Error al cargar notas de la orden:', error);
+    }
+    return [];
 }
 
 function mostrarOrdenEnModal(orden) {
@@ -497,6 +512,16 @@ function mostrarOrdenEnModal(orden) {
                 </div>
                 ${orden.metodo_pago ? `<p class="text-center mt-2"><strong>Método de Pago:</strong> ${orden.metodo_pago}</p>` : ''}
             </div>
+        </div>
+        
+        <div class="mt-4 p-3 bg-light rounded-3">
+            <h6 class="fw-bold"><i class="fas fa-sticky-note me-2"></i>Notas de cierre</h6>
+            ${orden.notas && orden.notas.length ? (
+                '<ul class="list-group list-group-flush">' + orden.notas.map(nota => {
+                    const fecha = nota.fecha_nota ? new Date(nota.fecha_nota).toLocaleString('es-CL') : 'Sin fecha';
+                    return `<li class="list-group-item py-2"><strong>${fecha}:</strong> ${nota.nota || 'Sin detalle'}</li>`;
+                }).join('') + '</ul>'
+            ) : '<p class="text-muted mb-0">Sin notas de cierre registradas.</p>'}
         </div>
         
         ${firmaHtml}
@@ -1216,7 +1241,7 @@ function renderizarLiquidaciones(liquidaciones) {
                 <td>$${(tecnico.monto_total || 0).toLocaleString('es-CL')}</td>
                 <td>$${(tecnico.ganancia_tecnico || 0).toLocaleString('es-CL')}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="verOrdenesTecnico(${tecnico.id}, '${nombre}')">
+                    <button class="btn btn-sm btn-danger" onclick="verOrdenesTecnico(${tecnico.id}, '${nombre}')">
                         Ver Órdenes (${tecnico.ordenes_realizadas || 0})
                     </button>
                 </td>
@@ -1342,7 +1367,7 @@ function renderizarOrdenesLiquidacion(ordenes, tecnicoNombre) {
                 <td>${orden.estado || 'N/A'}</td>
                 <td>$${(orden.monto_total || 0).toLocaleString('es-CL')}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="verOrden(${orden.id})">
+                    <button class="btn btn-sm btn-danger" onclick="verOrden(${orden.id})">
                         Ver OT
                     </button>
                 </td>
