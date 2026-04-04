@@ -324,7 +324,7 @@ function mostrarResultados(ordenes) {
                             </p>
                             <p class="card-text mb-1">
                                 <i class="fas fa-calendar me-2"></i>${orden.fecha_ingreso || 'N/A'} 
-                                <i class="fas fa-dollar-sign ms-3 me-2"></i>Total: $${(orden.monto_total || 0).toLocaleString('es-CL')}
+                                <i class="fas fa-dollar-sign ms-3 me-2"></i>Total: $${Number(orden.monto_total || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}
                             </p>
                         </div>
                         <div class="col-md-4 text-end">
@@ -438,6 +438,7 @@ function mostrarOrdenEnModal(orden) {
                 <p><strong>Nombre:</strong> ${orden.cliente_nombre || 'N/A'}</p>
                 <p><strong>R.U.T.:</strong> ${orden.cliente_rut || 'N/A'}</p>
                 <p><strong>Teléfono:</strong> ${orden.cliente_telefono || 'N/A'}</p>
+                <p><strong>Dirección:</strong> ${orden.direccion || 'N/A'}</p>
                 <p><strong>Fecha Ingreso:</strong> ${orden.fecha_ingreso || 'N/A'} ${orden.hora_ingreso || ''}</p>
                 <p><strong>Recepcionista:</strong> ${orden.recepcionista || 'N/A'}</p>
             </div>
@@ -480,19 +481,19 @@ function mostrarOrdenEnModal(orden) {
                     <div class="col-4">
                         <div class="p-3 bg-light rounded">
                             <small class="text-muted">Total</small>
-                            <div class="h4">$${(orden.monto_total || 0).toLocaleString('es-CL')}</div>
+                            <div class="h4">$${Number(orden.monto_total || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="p-3 bg-light rounded">
                             <small class="text-muted">Abono</small>
-                            <div class="h4">$${(orden.monto_abono || 0).toLocaleString('es-CL')}</div>
+                            <div class="h4">$${Number(orden.monto_abono || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="p-3 bg-light rounded">
                             <small class="text-muted">Restante</small>
-                            <div class="h4">$${(orden.monto_restante || 0).toLocaleString('es-CL')}</div>
+                            <div class="h4">$${Number(orden.monto_restante || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}</div>
                         </div>
                     </div>
                 </div>
@@ -595,6 +596,7 @@ async function generarPDF(orden) {
     doc.text(`Cliente: ${orden.cliente_nombre || 'N/A'}`, leftMargin, yPos); yPos += 4;
     doc.text(`R.U.T.: ${orden.cliente_rut || 'N/A'}`, leftMargin, yPos); yPos += 4;
     doc.text(`Teléfono: ${orden.cliente_telefono || 'N/A'}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Dirección: ${orden.direccion || 'N/A'}`, leftMargin, yPos); yPos += 4;
     doc.text(`Fecha Ingreso: ${orden.fecha_ingreso || 'N/A'} ${orden.hora_ingreso || ''}`, leftMargin, yPos); yPos += 4;
     doc.text(`Recepcionista: ${orden.recepcionista || 'N/A'}`, leftMargin, yPos); yPos += 10;
 
@@ -672,9 +674,9 @@ async function generarPDF(orden) {
 
     doc.setFont(undefined, 'normal');
     doc.setFontSize(7);
-    doc.text(`Total Estimado: $${(orden.monto_total || 0).toLocaleString('es-CL')}`, leftMargin, yPos); yPos += 4;
-    doc.text(`Abono Recibido: $${(orden.monto_abono || 0).toLocaleString('es-CL')}`, leftMargin, yPos); yPos += 4;
-    doc.text(`Restante: $${(orden.monto_restante || 0).toLocaleString('es-CL')}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Total Estimado: $${Number(orden.monto_total || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Abono Recibido: $${Number(orden.monto_abono || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, leftMargin, yPos); yPos += 4;
+    doc.text(`Restante: $${Number(orden.monto_restante || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, leftMargin, yPos); yPos += 4;
     if (orden.metodo_pago) {
         doc.text(`Método de Pago: ${orden.metodo_pago}`, leftMargin, yPos); yPos += 4;
     }
@@ -839,6 +841,10 @@ function mostrarSeccion(seccion) {
     if (seccionTecnicos) {
         seccionTecnicos.style.display = 'none';
     }
+    const seccionLiquidar = document.getElementById('seccion-liquidar');
+    if (seccionLiquidar) {
+        seccionLiquidar.style.display = 'none';
+    }
 
     // Mostrar la sección seleccionada
     document.getElementById('seccion-' + seccion).style.display = 'block';
@@ -853,6 +859,18 @@ function mostrarSeccion(seccion) {
     if (seccion === 'tecnicos') {
         cargarTecnicos();
         cargarOrdenesDisponibles();
+    }
+
+    // Si es la sección de liquidación, cargar datos y configurar filtro
+    if (seccion === 'liquidar') {
+        cargarTecnicos();
+        actualizarTipoFiltro();
+        document.getElementById('liquidacion-resultados').innerHTML = `
+            <div class="text-center text-muted py-4">
+                Seleccione un técnico y un periodo para mostrar las órdenes atendidas y la comisión.
+            </div>
+        `;
+        document.getElementById('liquidacion-resumen').innerHTML = '';
     }
 }
 
@@ -919,19 +937,21 @@ function renderizarListaTecnicos(tecnicos) {
 }
 
 function actualizarSelectTecnicos(tecnicos) {
-    const select = document.getElementById('asignar-tecnico-id');
-    if (!select) return;
+    const selects = [
+        document.getElementById('asignar-tecnico-id'),
+        document.getElementById('liquidar-tecnico-id')
+    ].filter(Boolean);
 
-    // Mantener solo la primera opción
-    select.innerHTML = '<option value="">Seleccione un técnico...</option>';
-
-    tecnicos.forEach(tecnico => {
-        if (tecnico.activo) {
-            const option = document.createElement('option');
-            option.value = tecnico.id;
-            option.textContent = `${tecnico.nombre} (${tecnico.telefono})`;
-            select.appendChild(option);
-        }
+    selects.forEach(select => {
+        select.innerHTML = '<option value="">Seleccione un técnico...</option>';
+        tecnicos.forEach(tecnico => {
+            if (tecnico.activo) {
+                const option = document.createElement('option');
+                option.value = tecnico.id;
+                option.textContent = `${tecnico.nombre} (${tecnico.telefono})`;
+                select.appendChild(option);
+            }
+        });
     });
 }
 
@@ -1057,4 +1077,146 @@ async function asignarOrden() {
         console.error('Error al asignar orden:', error);
         mostrarNotificacion('error', 'Error', 'Error de conexión');
     }
+}
+
+function actualizarTipoFiltro() {
+    const periodo = document.getElementById('liquidacion-periodo').value;
+    const input = document.getElementById('liquidacion-valor');
+    const label = document.getElementById('liquidacion-valor-label');
+
+    if (!input || !label) return;
+
+    if (periodo === 'anio') {
+        input.type = 'number';
+        input.min = '2000';
+        input.max = new Date().getFullYear();
+        input.placeholder = '2026';
+        label.textContent = 'Año';
+    } else if (periodo === 'mes') {
+        input.type = 'month';
+        input.placeholder = '';
+        label.textContent = 'Mes';
+    } else {
+        input.type = 'date';
+        input.placeholder = '';
+        label.textContent = 'Día';
+    }
+    input.value = '';
+}
+
+function formatMoney(value) {
+    return Number(value || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 });
+}
+
+async function buscarLiquidacionTecnico() {
+    const tecnicoId = document.getElementById('liquidar-tecnico-id').value;
+    const periodo = document.getElementById('liquidacion-periodo').value;
+    const valor = document.getElementById('liquidacion-valor').value;
+
+    if (!tecnicoId) {
+        mostrarNotificacion('warning', 'Falta Técnico', 'Seleccione un técnico para generar la liquidación');
+        return;
+    }
+
+    if (!valor) {
+        mostrarNotificacion('warning', 'Falta Fecha', 'Seleccione una fecha para filtrar');
+        return;
+    }
+
+    try {
+        mostrarLoading(true);
+        const url = new URL(`${API_BASE}/admin/liquidar-tecnicos`, window.location.origin);
+        url.searchParams.append('tecnico_id', tecnicoId);
+        url.searchParams.append('periodo', periodo);
+        url.searchParams.append('valor', valor);
+
+        const response = await fetch(url.toString());
+        const data = await response.json();
+
+        if (data.success) {
+            renderizarResumenLiquidacion(data);
+            renderizarLiquidacionOrdenes(data.ordenes);
+        } else {
+            mostrarNotificacion('error', 'Error', data.error || 'No se pudo cargar la liquidación');
+        }
+    } catch (error) {
+        console.error('Error al buscar liquidación:', error);
+        mostrarNotificacion('error', 'Error', 'Error al consultar la liquidación');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+function renderizarResumenLiquidacion(data) {
+    document.getElementById('liquidacion-resumen').innerHTML = `
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm rounded p-3 text-center">
+                <h6 class="text-muted">Órdenes atendidas</h6>
+                <div class="display-6 fw-bold">${data.totalOt || 0}</div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm rounded p-3 text-center bg-light">
+                <h6 class="text-muted">Total generado</h6>
+                <div class="display-6 fw-bold text-success">$${formatMoney(data.totalGenerado)}</div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm rounded p-3 text-center bg-light">
+                <h6 class="text-muted">Comisión 40%</h6>
+                <div class="display-6 fw-bold text-primary">$${formatMoney(data.totalTecnico)}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderizarLiquidacionOrdenes(ordenes) {
+    if (!ordenes || ordenes.length === 0) {
+        document.getElementById('liquidacion-resultados').innerHTML = `
+            <div class="text-center text-muted py-4">
+                No hay órdenes para el técnico y el periodo seleccionado.
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="table-responsive">';
+    html += '<table class="table table-hover align-middle">';
+    html += '<thead><tr>' +
+        '<th>Orden</th>' +
+        '<th>Cliente</th>' +
+        '<th>Dirección</th>' +
+        '<th>Creación</th>' +
+        '<th>Cierre</th>' +
+        '<th>Total</th>' +
+        '<th>Abono</th>' +
+        '<th>Restante</th>' +
+        '<th>Ganancia</th>' +
+        '<th>Estado</th>' +
+        '<th>Acción</th>' +
+        '</tr></thead><tbody>';
+
+    ordenes.forEach(orden => {
+        const fechaCreacion = orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-CL') : 'N/A';
+        const fechaCierre = orden.fecha_completado ? new Date(orden.fecha_completado).toLocaleDateString('es-CL') : 'N/A';
+        const ganancia = Math.round(Number(orden.monto_total || 0) * 0.4);
+        const estado = orden.estado_trabajo === 'Cerrada' ? 'Cerrada' : (orden.estado || 'N/A');
+
+        html += `<tr>
+            <td><strong>#${String(orden.numero_orden).padStart(6, '0')}</strong></td>
+            <td>${orden.cliente_nombre || 'N/A'}</td>
+            <td>${orden.direccion || 'N/A'}</td>
+            <td>${fechaCreacion}</td>
+            <td>${fechaCierre}</td>
+            <td>$${formatMoney(orden.monto_total)}</td>
+            <td>$${formatMoney(orden.monto_abono)}</td>
+            <td>$${formatMoney(orden.monto_restante)}</td>
+            <td>$${formatMoney(ganancia)}</td>
+            <td>${estado}</td>
+            <td><button class="btn btn-sm btn-outline-primary" onclick="verOrden(${orden.id})">Ver OT</button></td>
+        </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    document.getElementById('liquidacion-resultados').innerHTML = html;
 }

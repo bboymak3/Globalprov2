@@ -309,20 +309,90 @@ function renderizarAcciones(orden) {
             break;
         case 'Completada':
             html = `
-                <div class="text-center">
-                    <p class="text-success"><i class="fas fa-check-circle me-2"></i>Trabajo completado</p>
+                <div class="orden-card mb-3">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-check-circle me-2"></i>Completar Cierre de Orden</h6>
+                    <div class="mb-3">
+                        <label class="form-label">Notas de cierre <span class="text-danger">*</span></label>
+                        <textarea id="notas-cierre" class="form-control" rows="3" placeholder="Describe lo que se hizo..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">¿El cliente pagó?</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="pago-cerrado" id="pago-cerrado-si" value="si" onclick="actualizarPanelPagoCierre()">
+                            <label class="form-check-label" for="pago-cerrado-si">Sí</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="pago-cerrado" id="pago-cerrado-no" value="no" onclick="actualizarPanelPagoCierre()">
+                            <label class="form-check-label" for="pago-cerrado-no">No</label>
+                        </div>
+                    </div>
+                    <div id="pago-metodo-panel" class="mb-3" style="display:none;">
+                        <label class="form-label">Método de pago</label>
+                        <select id="metodo-pago-cierre" class="form-select">
+                            <option value="">Seleccione método...</option>
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Transferencia">Transferencia</option>
+                            <option value="Mercado Pago">Mercado Pago</option>
+                            <option value="Cheque">Cheque</option>
+                        </select>
+                    </div>
+                    <div id="pago-motivo-panel" class="mb-3" style="display:none;">
+                        <label class="form-label">Motivo de pago pendiente</label>
+                        <select id="motivo-no-pago-cierre" class="form-select">
+                            <option value="">Seleccione motivo...</option>
+                            <option value="Cliente no tenía efectivo">Cliente no tenía efectivo</option>
+                            <option value="Pago pendiente por transferencia">Pago pendiente por transferencia</option>
+                            <option value="Cliente no se encontraba">Cliente no se encontraba</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
                     <button class="btn btn-success action-btn" onclick="aceptarYCerrarOrden()">
-                        <i class="fas fa-check me-2"></i>Aceptar y Cerrar Orden
+                        <i class="fas fa-check me-2"></i>Cerrar Orden
                     </button>
                 </div>
             `;
             break;
         case 'Usuario Satisfecho':
             html = `
-                <div class="text-center">
-                    <p class="text-success"><i class="fas fa-check-double me-2"></i>Cliente satisfecho con el trabajo</p>
-                    <button class="btn btn-success action-btn" onclick="cerrarOrden()">
-                        <i class="fas fa-lock me-2"></i>Cerrar Orden
+                <div class="orden-card mb-3">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-check-double me-2"></i>Completar Cierre de Orden</h6>
+                    <div class="mb-3">
+                        <label class="form-label">Notas de cierre <span class="text-danger">*</span></label>
+                        <textarea id="notas-cierre" class="form-control" rows="3" placeholder="Describe lo que se hizo..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">¿El cliente pagó?</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="pago-cerrado" id="pago-cerrado-si" value="si" onclick="actualizarPanelPagoCierre()">
+                            <label class="form-check-label" for="pago-cerrado-si">Sí</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="pago-cerrado" id="pago-cerrado-no" value="no" onclick="actualizarPanelPagoCierre()">
+                            <label class="form-check-label" for="pago-cerrado-no">No</label>
+                        </div>
+                    </div>
+                    <div id="pago-metodo-panel" class="mb-3" style="display:none;">
+                        <label class="form-label">Método de pago</label>
+                        <select id="metodo-pago-cierre" class="form-select">
+                            <option value="">Seleccione método...</option>
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Transferencia">Transferencia</option>
+                            <option value="Mercado Pago">Mercado Pago</option>
+                            <option value="Cheque">Cheque</option>
+                        </select>
+                    </div>
+                    <div id="pago-motivo-panel" class="mb-3" style="display:none;">
+                        <label class="form-label">Motivo de pago pendiente</label>
+                        <select id="motivo-no-pago-cierre" class="form-select">
+                            <option value="">Seleccione motivo...</option>
+                            <option value="Cliente no tenía efectivo">Cliente no tenía efectivo</option>
+                            <option value="Pago pendiente por transferencia">Pago pendiente por transferencia</option>
+                            <option value="Cliente no se encontraba">Cliente no se encontraba</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-success action-btn" onclick="aceptarYCerrarOrden()">
+                        <i class="fas fa-check me-2"></i>Cerrar Orden
                     </button>
                 </div>
             `;
@@ -792,48 +862,82 @@ async function aceptarYCerrarOrden() {
         return;
     }
 
-    if (ordenActual.firma_imagen) {
-        mostrarNotificacion('info', 'Firmado', 'La orden ya está firmada por el cliente. Se cerrará ahora.');
+    const notasCierreInput = document.getElementById('notas-cierre');
+    const notasCierre = notasCierreInput ? notasCierreInput.value.trim() : '';
+    if (!notasCierre) {
+        mostrarNotificacion('warning', 'Notas obligatorias', 'Debe ingresar las notas de cierre antes de cerrar la orden');
+        if (notasCierreInput) notasCierreInput.focus();
+        return;
     }
 
-    // Pedir información de cierre al técnico
-    const notasCierre = prompt('Agregar notas de cierre (opcional)');
+    const pagoSeleccionado = document.querySelector('input[name="pago-cerrado"]:checked');
+    if (!pagoSeleccionado) {
+        mostrarNotificacion('warning', 'Pago obligatorio', 'Debe indicar si el cliente pagó o no antes de cerrar la orden');
+        return;
+    }
 
-    const pagoCompletado = confirm('¿El cliente terminó de cancelar?');
+    const pagoCompletado = pagoSeleccionado.value === 'si';
     let metodoPago = null;
-    let notaPago = '';
+    let motivoNoPago = null;
 
     if (pagoCompletado) {
-        metodoPago = prompt('Método de pago (Efectivo / Transferencia)').trim();
+        const metodoSelect = document.getElementById('metodo-pago-cierre');
+        metodoPago = metodoSelect ? metodoSelect.value : '';
         if (!metodoPago) {
-            metodoPago = 'No especificado';
+            mostrarNotificacion('warning', 'Método obligatorio', 'Debe seleccionar el método de pago del cliente');
+            if (metodoSelect) metodoSelect.focus();
+            return;
         }
-        notaPago = `Pago completado. Método: ${metodoPago}`;
     } else {
-        const motivoNoPago = prompt('Indica motivo por el cual no terminó de cancelar (opcional)');
-        notaPago = motivoNoPago ? `Pago pendiente: ${motivoNoPago}` : 'Pago pendiente: no especificó motivo';
+        const motivoSelect = document.getElementById('motivo-no-pago-cierre');
+        motivoNoPago = motivoSelect ? motivoSelect.value : '';
+        if (!motivoNoPago) {
+            mostrarNotificacion('warning', 'Motivo obligatorio', 'Debe seleccionar el motivo por el cual no pagó el cliente');
+            if (motivoSelect) motivoSelect.focus();
+            return;
+        }
     }
 
-    const restante = Number(ordenActual.monto_restante || 0);
-    let notaSaldo = '';
-    if (restante > 0) {
-        notaSaldo = `Saldo pendiente: $${restante.toFixed(2)}`;
-    } else if (restante < 0) {
-        notaSaldo = `Saldo a favor del cliente: $${Math.abs(restante).toFixed(2)}`;
-    } else {
-        notaSaldo = 'Saldo cancelado completamente.';
+    const body = {
+        orden_id: ordenActual.id,
+        tecnico_id: tecnicoActual.id,
+        notas_cierre: notasCierre,
+        pago_completado: pagoCompletado,
+        metodo_pago: pagoCompletado ? metodoPago : `Pago pendiente: ${motivoNoPago}`
+    };
+
+    try {
+        const response = await fetch(`${API_BASE}/cerrar-orden`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarNotificacion('success', 'Orden cerrada', 'La orden se ha cerrado correctamente');
+            ordenActual.estado_trabajo = 'Cerrada';
+            ordenActual.notas = data.notas || ordenActual.notas;
+            mostrarOrdenEnModal(ordenActual);
+            cargarOrdenes();
+        } else {
+            mostrarNotificacion('error', 'Error', data.error || 'No se pudo cerrar la orden');
+        }
+    } catch (error) {
+        console.error('Error al cerrar orden:', error);
+        mostrarNotificacion('error', 'Error', 'No se pudo cerrar la orden. Intente nuevamente.');
     }
+}
 
-    const notasFinales = [notasCierre, notaPago, notaSaldo].filter(Boolean).join(' | ');
+function actualizarPanelPagoCierre() {
+    const pagoSi = document.getElementById('pago-cerrado-si')?.checked;
+    const pagoNo = document.getElementById('pago-cerrado-no')?.checked;
+    const metodoPanel = document.getElementById('pago-metodo-panel');
+    const motivoPanel = document.getElementById('pago-motivo-panel');
 
-    // Guardar temporalmente las notas para usar en la firma
-    ordenActual.notas_cierre_temp = notasFinales;
-    ordenActual.pago_completado_temp = pagoCompletado;
-    ordenActual.metodo_pago_temp = metodoPago;
-
-    // Enviar link para firma con la información
-    mostrarNotificacion('info', 'Enviando link', 'Enviando link de aceptación al cliente...');
-    enviarLinkFirma(notasFinales, pagoCompletado, metodoPago);
+    if (metodoPanel) metodoPanel.style.display = pagoSi ? 'block' : 'none';
+    if (motivoPanel) motivoPanel.style.display = pagoNo ? 'block' : 'none';
 }
 
 function ordenarMontoRestante() {

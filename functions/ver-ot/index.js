@@ -170,6 +170,7 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '<hr>' +
     '<h6 class="fw-bold">DATOS DEL CLIENTE</h6>' +
     '<p><strong>Nombre:</strong> ' + (orden.cliente_nombre || 'N/A') + '</p>' +
+    '<p><strong>Dirección Cliente:</strong> ' + (orden.direccion || 'N/A') + '</p>' +
     '<p><strong>RUT:</strong> ' + (orden.cliente_rut || 'N/A') + '</p>' +
     '<p><strong>Fecha Ingreso:</strong> ' + (orden.fecha_ingreso || 'N/A') + ' ' + (orden.hora_ingreso || '') + '</p>' +
     '<p><strong>Recepcionista:</strong> ' + (orden.recepcionista || 'N/A') + '</p>' +
@@ -276,7 +277,9 @@ function generateOTViewerPage(orden, numeroFormateado, token) {
     '  doc.setFont(undefined, "normal");' +
     '  doc.setFontSize(7);' +
     '  doc.text("Cliente: " + (ordenData.cliente_nombre || "N/A"), leftMargin, yPos); yPos += 4;' +
+    '  doc.text("Dirección: " + (ordenData.direccion || "N/A"), leftMargin, yPos); yPos += 4;' +
     '  doc.text("RUT: " + (ordenData.cliente_rut || "N/A"), leftMargin, yPos); yPos += 4;' +
+    '  doc.text("Teléfono: " + (ordenData.cliente_telefono || "N/A"), leftMargin, yPos); yPos += 4;' +
     '  doc.text("Fecha Ingreso: " + (ordenData.fecha_ingreso || "N/A"), leftMargin, yPos); yPos += 10;' +
     '  doc.setFontSize(9);' +
     '  doc.setFont(undefined, "bold");' +

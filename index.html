@@ -224,6 +224,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="mostrarSeccion('tecnicos')">Gestión Técnicos</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="mostrarSeccion('liquidar')">Liquidar Técnicos</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -708,6 +711,59 @@
                                 <i class="fas fa-check me-2"></i>Asignar Orden
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección: Liquidar Técnicos -->
+        <div id="seccion-liquidar" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12 text-center">
+                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">Liquidar Técnicos</h1>
+                    <p class="text-muted">Filtra por técnico y por día, mes o año para conocer las órdenes atendidas y la liquidación.</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Técnico</label>
+                            <select class="form-select" id="liquidar-tecnico-id">
+                                <option value="">Seleccione un técnico...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Periodo</label>
+                            <select class="form-select" id="liquidacion-periodo" onchange="actualizarTipoFiltro()">
+                                <option value="dia">Día</option>
+                                <option value="mes" selected>Mes</option>
+                                <option value="anio">Año</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" id="liquidacion-valor-label">Mes</label>
+                            <input type="month" class="form-control" id="liquidacion-valor">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" onclick="buscarLiquidacionTecnico()">
+                                <i class="fas fa-search me-2"></i>Buscar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="liquidacion-resumen" class="row mb-4"></div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>Detalle de Liquidación
+                </div>
+                <div class="card-body" id="liquidacion-resultados">
+                    <div class="text-center text-muted py-4">
+                        Seleccione un técnico y un periodo para mostrar las órdenes atendidas y la comisión.
                     </div>
                 </div>
             </div>

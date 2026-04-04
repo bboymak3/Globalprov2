@@ -55,12 +55,41 @@ export async function onRequestPost(context) {
     }
 
     const notasCierre = (data.notas_cierre || '').trim();
-    const notasActualizadas = notasCierre ?
-      ((orden.notas || '').trim() ? `${orden.notas.trim()}\nCierre: ${notasCierre}` : `Cierre: ${notasCierre}`) :
-      (orden.notas || null);
+    if (!notasCierre) {
+      return new Response(JSON.stringify({ success: false, error: 'Las notas de cierre son obligatorias' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
+
+    if (data.pago_completado === undefined || data.pago_completado === null) {
+      return new Response(JSON.stringify({ success: false, error: 'Debe indicar si el cliente pagó o no' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
 
     const pagoCompletado = !!data.pago_completado;
-    const metodoPago = data.metodo_pago ? data.metodo_pago.trim() : null;
+    let metodoPago = data.metodo_pago ? data.metodo_pago.trim() : null;
+
+    if (pagoCompletado) {
+      if (!metodoPago) {
+        return new Response(JSON.stringify({ success: false, error: 'Debe seleccionar el método de pago' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 400
+        });
+      }
+    } else {
+      if (!metodoPago) {
+        return new Response(JSON.stringify({ success: false, error: 'Debe seleccionar el motivo del pago pendiente' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 400
+        });
+      }
+      metodoPago = `Pago pendiente: ${metodoPago}`;
+    }
+
+    const notasActualizadas = ((orden.notas || '').trim() ? `${orden.notas.trim()}\nCierre: ${notasCierre}` : `Cierre: ${notasCierre}`);
 
     // Si pago completado y monto restante existe, dejamos en 0, sino conservamos saldo
     const nuevoMontoRestante = pagoCompletado ? 0 : (orden.monto_restante || 0);
