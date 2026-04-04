@@ -1242,10 +1242,10 @@ function mostrarOrdenesTecnico(ordenes, tecnicoNombre) {
                         <th>Vehículo</th>
                         <th>Cliente</th>
                         <th>Estado</th>
+                        <th class="text-center">Completadas</th>
                         <th class="text-end">Total</th>
                         <th>Fecha Creación</th>
                         <th>Fecha Completado</th>
-                        <th class="text-center">Completadas</th>
                         <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
@@ -1275,13 +1275,11 @@ function mostrarOrdenesTecnico(ordenes, tecnicoNombre) {
                 <td>
                     <span class="badge ${estadoClass}">${estadoIcon} ${orden.estado}</span>
                 </td>
-                <td class="text-end">
-                    <strong>${formatearMontoConSimbolo(orden.monto_total)}</strong>
-                </td>
-                <td>${orden.fecha_creacion_formateada}</td>
-                <td>${orden.fecha_completado_formateada || 'Pendiente'}</td>
                 <td class="text-center">
                     ${iconoCompletada}
+                </td>
+                <td class="text-end">
+                    <strong>${formatearMontoConSimbolo(orden.monto_total)}</strong>
                 </td>
                 <td class="text-center">
                     <button class="btn btn-sm btn-outline-primary" onclick="verOrdenDesdeModalTecnico(${orden.id})" title="Ver orden completa">
