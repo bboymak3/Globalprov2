@@ -163,6 +163,7 @@ async function guardarOrden() {
         cliente: document.getElementById('cliente').value,
         rut: document.getElementById('rut').value,
         telefono: document.getElementById('telefono').value,
+        direccion: document.getElementById('direccion').value,
         fecha_ingreso: document.getElementById('fecha-ingreso').value,
         hora_ingreso: document.getElementById('hora-ingreso').value,
         recepcionista: document.getElementById('recepcionista').value,
@@ -870,6 +871,7 @@ function mostrarSeccion(seccion) {
     // Si es la sección de técnicos, cargar datos
     if (seccion === 'tecnicos') {
         cargarTecnicos();
+        cargarOrdenesDisponibles();
     }
 }
 
@@ -950,6 +952,64 @@ function actualizarSelectTecnicos(tecnicos) {
             select.appendChild(option);
         }
     });
+}
+
+async function cargarOrdenesDisponibles() {
+    try {
+        const response = await fetch(`${API_BASE}/admin/ordenes-disponibles`);
+        const data = await response.json();
+
+        if (data.success && data.ordenes) {
+            renderizarListaOrdenesDisponibles(data.ordenes);
+        } else {
+            document.getElementById('lista-ordenes-disponibles').innerHTML = `
+                <div class="text-center text-muted py-3">
+                    <p>No hay órdenes disponibles</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error al cargar órdenes disponibles:', error);
+        document.getElementById('lista-ordenes-disponibles').innerHTML = `
+            <div class="text-center text-danger py-3">
+                <p>Error al cargar órdenes</p>
+            </div>
+        `;
+    }
+}
+
+function renderizarListaOrdenesDisponibles(ordenes) {
+    if (ordenes.length === 0) {
+        document.getElementById('lista-ordenes-disponibles').innerHTML = `
+            <div class="text-center text-muted py-3">
+                <p>No hay órdenes disponibles</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-hover">';
+    html += '<thead><tr><th>N° Orden</th><th>Cliente</th><th>Patente</th><th>Fecha</th><th>Acción</th></tr></thead><tbody>';
+
+    ordenes.forEach(orden => {
+        const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
+        const fecha = new Date(orden.fecha_creacion).toLocaleDateString('es-CL');
+        html += `<tr>
+            <td><strong class="text-primary">${numeroFormateado}</strong></td>
+            <td>${orden.cliente_nombre || 'N/A'}</td>
+            <td><code>${orden.patente_placa || 'N/A'}</code></td>
+            <td>${fecha}</td>
+            <td><button class="btn btn-sm btn-outline-primary" onclick="seleccionarOrden(${orden.id}, '${numeroFormateado}')">Seleccionar</button></td>
+        </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    document.getElementById('lista-ordenes-disponibles').innerHTML = html;
+}
+
+function seleccionarOrden(id, numero) {
+    document.getElementById('asignar-orden-id').value = id;
+    mostrarNotificacion('info', 'Orden Seleccionada', `Orden ${numero} seleccionada para asignación`);
 }
 
 async function registrarTecnico(event) {

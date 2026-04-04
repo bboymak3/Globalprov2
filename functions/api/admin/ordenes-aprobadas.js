@@ -18,9 +18,11 @@ export async function onRequestGet(context) {
         modelo,
         cliente_nombre,
         fecha_aprobacion,
+        fecha_completado,
+        estado_trabajo,
         tecnico_asignado_id
       FROM OrdenesTrabajo
-      WHERE estado = 'Aprobada'
+      WHERE estado = 'Aprobada' OR estado_trabajo = 'Cerrada'
       ORDER BY fecha_aprobacion DESC
     `).all();
 
@@ -28,7 +30,9 @@ export async function onRequestGet(context) {
     const ordenesFormateadas = (ordenes.results || []).map(orden => ({
       ...orden,
       numero_orden_formateado: String(orden.numero_orden).padStart(6, '0'),
-      asignada: orden.tecnico_asignado_id !== null
+      asignada: orden.tecnico_asignado_id !== null,
+      estado_cerrada: orden.estado_trabajo === 'Cerrada',
+      estado_resumen: orden.estado_trabajo === 'Cerrada' ? 'Cerrada' : (orden.estado || 'N/A')
     }));
 
     return new Response(JSON.stringify({

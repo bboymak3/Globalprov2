@@ -88,15 +88,15 @@
         }
 
         .numero-orden {
-            font-size: 2.5rem;
+            font-size: 1.5rem;
             font-weight: bold;
             color: var(--gp-red);
             text-align: center;
             background: linear-gradient(135deg, #fff 0%, #f8f8f8 100%);
-            border: 3px solid var(--gp-red);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border: 2px solid var(--gp-red);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
         }
 
         /* Estados de orden */
@@ -237,7 +237,7 @@
         <div id="seccion-crear">
             <div class="row">
                 <div class="col-12 text-center mb-4">
-                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">Nueva Orden de Trabajo</h1>
+                    <h1 class="display-4 fw-bold" style="color: var(--gp-red);">GP - OT</h1>
                     <p class="text-muted">Complete el formulario para crear una nueva orden de trabajo</p>
                 </div>
             </div>
@@ -265,7 +265,7 @@
                                     <i class="fas fa-id-card me-2"></i>PATENTE / PLACA
                                 </label>
                                 <input type="text" class="form-control patente-input" id="patente" 
-                                       placeholder="Ej: GP LT 55" required 
+                                       placeholder="" required 
                                        onkeyup="this.value = this.value.toUpperCase(); buscarVehiculoPorPatente(this.value);">
                                 <div class="text-center mt-2">
                                     <button type="button" class="btn btn-outline-primary" onclick="buscarVehiculoPorPatente(document.getElementById('patente').value);">
@@ -332,6 +332,13 @@
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Teléfono <span class="text-danger">*</span></label>
                                 <input type="tel" class="form-control" id="telefono" required placeholder="+56 9 1234 5678">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Dirección <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="direccion" required placeholder="Ej: Calle Principal 123, Ciudad">
                             </div>
                         </div>
 
@@ -654,6 +661,20 @@
 
                 <!-- Lista de técnicos y asignación de órdenes -->
                 <div class="col-md-8">
+                    <!-- Órdenes disponibles -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="fas fa-list me-2"></i>Órdenes Disponibles
+                        </div>
+                        <div class="card-body">
+                            <div id="lista-ordenes-disponibles">
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando órdenes...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Lista de técnicos -->
                     <div class="card mb-4">
                         <div class="card-header">

@@ -1,28 +1,40 @@
 -- ============================================
--- ESQUEMA COMPLETO DE BASE DE DATOS
--- Global Pro Automotriz
--- Sistema de Órdenes de Trabajo y Gestión de Técnicos
+-- RECREACIÓN COMPLETA DE LA BASE DE DATOS
+-- Taller V2 - Global Pro Automotriz
 -- ============================================
--- 
--- Este archivo contiene TODAS las tablas necesarias para el sistema.
--- Ejecutar este script en tu base de datos D1 de Cloudflare.
+-- Este script ELIMINA y RECREA todas las tablas necesarias
+-- Ejecutar con cuidado - SE PERDERÁN TODOS LOS DATOS EXISTENTES
 --
--- Ejemplo de ejecución:
--- npx wrangler d1 execute <nombre-de-tu-base> --file=database-schema-complete.sql
+-- Comando:
+-- npx wrangler d1 execute tallerv2_db --file=recrear-tablas-completo.sql
 --
 -- ============================================
+
+-- ============================================
+-- ELIMINAR TABLAS EXISTENTES (en orden inverso de dependencias)
+-- ============================================
+
+DROP TABLE IF EXISTS Pagos;
+DROP TABLE IF EXISTS NotasTrabajo;
+DROP TABLE IF EXISTS FotosTrabajo;
+DROP TABLE IF EXISTS SeguimientoTrabajo;
+DROP TABLE IF EXISTS AsignacionesTecnico;
+DROP TABLE IF EXISTS Tecnicos;
+DROP TABLE IF EXISTS OrdenesTrabajo;
+DROP TABLE IF EXISTS Vehiculos;
+DROP TABLE IF EXISTS Clientes;
+DROP TABLE IF EXISTS Configuracion;
 
 -- ============================================
 -- TABLA DE CONFIGURACIÓN
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS Configuracion (
+CREATE TABLE Configuracion (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   ultimo_numero_orden INTEGER DEFAULT 0,
   fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insertar configuración inicial si no existe
 INSERT OR IGNORE INTO Configuracion (id, ultimo_numero_orden)
 VALUES (1, 57);
 
@@ -30,7 +42,7 @@ VALUES (1, 57);
 -- TABLA DE CLIENTES
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS Clientes (
+CREATE TABLE Clientes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL,
   rut TEXT,
@@ -39,7 +51,6 @@ CREATE TABLE IF NOT EXISTS Clientes (
   fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Índices para búsquedas frecuentes
 CREATE INDEX IF NOT EXISTS idx_clientes_telefono ON Clientes(telefono);
 CREATE INDEX IF NOT EXISTS idx_clientes_nombre ON Clientes(nombre);
 
@@ -47,7 +58,7 @@ CREATE INDEX IF NOT EXISTS idx_clientes_nombre ON Clientes(nombre);
 -- TABLA DE VEHÍCULOS
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS Vehiculos (
+CREATE TABLE Vehiculos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   cliente_id INTEGER,
   patente_placa TEXT NOT NULL UNIQUE,
@@ -61,7 +72,6 @@ CREATE TABLE IF NOT EXISTS Vehiculos (
   FOREIGN KEY (cliente_id) REFERENCES Clientes(id) ON DELETE SET NULL
 );
 
--- Índice para búsquedas por patente
 CREATE INDEX IF NOT EXISTS idx_vehiculos_patente ON Vehiculos(patente_placa);
 CREATE INDEX IF NOT EXISTS idx_vehiculos_cliente ON Vehiculos(cliente_id);
 
@@ -69,88 +79,64 @@ CREATE INDEX IF NOT EXISTS idx_vehiculos_cliente ON Vehiculos(cliente_id);
 -- TABLA DE ÓRDENES DE TRABAJO
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS OrdenesTrabajo (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-  -- Identificación
-  numero_orden INTEGER NOT NULL UNIQUE,
-  token TEXT NOT NULL UNIQUE,
-  token_firma_tecnico TEXT UNIQUE,  -- Token generado por técnico para que cliente firme
-
-  -- Relaciones
-  cliente_id INTEGER,
-  vehiculo_id INTEGER,
-  tecnico_asignado_id INTEGER,
-
-  -- Datos del cliente (copia para rendimiento)
-  cliente_nombre TEXT,
-  cliente_rut TEXT,
-  cliente_telefono TEXT,
-
-  -- Datos del vehículo (copia para rendimiento)
-  patente_placa TEXT,
-  marca TEXT,
-  modelo TEXT,
-  anio INTEGER,
-  cilindrada TEXT,
-  combustible TEXT,
-  kilometraje TEXT,
-
-  -- Datos de ingreso
-  fecha_ingreso DATE,
-  hora_ingreso TIME,
-  recepcionista TEXT,
-  direccion TEXT,
-  referencia_direccion TEXT,
-
-  -- Trabajos
-  trabajo_frenos INTEGER DEFAULT 0,
-  detalle_frenos TEXT,
-
-  trabajo_luces INTEGER DEFAULT 0,
-  detalle_luces TEXT,
-
-  trabajo_tren_delantero INTEGER DEFAULT 0,
-  detalle_tren_delantero TEXT,
-
-  trabajo_correas INTEGER DEFAULT 0,
-  detalle_correas TEXT,
-
-  trabajo_componentes INTEGER DEFAULT 0,
-  detalle_componentes TEXT,
-
-  -- Checklist
-  nivel_combustible TEXT,
-
-  check_paragolfe_delantero_der INTEGER DEFAULT 0,
-  check_puerta_delantera_der INTEGER DEFAULT 0,
-  check_puerta_trasera_der INTEGER DEFAULT 0,
-  check_paragolfe_trasero_izq INTEGER DEFAULT 0,
-  check_otros_carroceria TEXT,
-
-  -- Valores
-  monto_total REAL DEFAULT 0,
-  monto_abono REAL DEFAULT 0,
-  monto_restante REAL DEFAULT 0,
-  metodo_pago TEXT,
-
-  -- Estados
-  estado TEXT DEFAULT 'Enviada',  -- Enviada, Aprobada, Cancelada
-  estado_trabajo TEXT DEFAULT 'Pendiente Visita',  -- Pendiente Visita, En Sitio, En Progreso, Pendiente Piezas, Completada, Aprobada, No Completada
-
-  -- Firma
-  firma_imagen TEXT,
-  fecha_aprobacion DATETIME,
-
-  -- Fechas
-  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-  FOREIGN KEY (cliente_id) REFERENCES Clientes(id),
-  FOREIGN KEY (vehiculo_id) REFERENCES Vehiculos(id) ON DELETE SET NULL,
-  FOREIGN KEY (tecnico_asignado_id) REFERENCES Tecnicos(id) ON DELETE SET NULL
+CREATE TABLE OrdenesTrabajo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero_orden INTEGER NOT NULL UNIQUE,
+    token TEXT UNIQUE NOT NULL,
+    cliente_id INTEGER,
+    vehiculo_id INTEGER,
+    patente_placa TEXT NOT NULL,
+    fecha_ingreso TEXT,
+    hora_ingreso TEXT,
+    recepcionista TEXT,
+    marca TEXT,
+    modelo TEXT,
+    anio INTEGER,
+    cilindrada TEXT,
+    combustible TEXT,
+    kilometraje TEXT,
+    trabajo_frenos INTEGER DEFAULT 0,
+    detalle_frenos TEXT,
+    trabajo_luces INTEGER DEFAULT 0,
+    detalle_luces TEXT,
+    trabajo_tren_delantero INTEGER DEFAULT 0,
+    detalle_tren_delantero TEXT,
+    trabajo_correas INTEGER DEFAULT 0,
+    detalle_correas TEXT,
+    trabajo_componentes INTEGER DEFAULT 0,
+    detalle_componentes TEXT,
+    nivel_combustible TEXT,
+    check_paragolfe_delantero_der INTEGER DEFAULT 0,
+    check_puerta_delantera_der INTEGER DEFAULT 0,
+    check_puerta_trasera_der INTEGER DEFAULT 0,
+    check_paragolfe_trasero_izq INTEGER DEFAULT 0,
+    check_otros_carroceria TEXT,
+    monto_total REAL DEFAULT 0,
+    monto_abono REAL DEFAULT 0,
+    monto_restante REAL DEFAULT 0,
+    metodo_pago TEXT,
+    estado TEXT DEFAULT 'Enviada' CHECK(estado IN ('Enviada', 'Aprobada', 'Cancelada', 'completada', 'en_proceso', 'Cerrada')),
+    estado_trabajo TEXT DEFAULT 'Pendiente Visita',
+    cliente_nombre TEXT,
+    cliente_rut TEXT,
+    cliente_telefono TEXT,
+    firma_imagen TEXT,
+    fecha_aprobacion TEXT,
+    aprobado_por TEXT,
+    pagado INTEGER DEFAULT 0,
+    fecha_pago TEXT,
+    requiere_abono INTEGER DEFAULT 0,
+    tecnico_asignado_id INTEGER,
+    token_firma_tecnico TEXT UNIQUE,
+    direccion TEXT,
+    notas TEXT,
+    completo INTEGER DEFAULT 0,
+    fecha_completado TEXT,
+    FOREIGN KEY (cliente_id) REFERENCES Clientes(id) ON DELETE SET NULL,
+    FOREIGN KEY (vehiculo_id) REFERENCES Vehiculos(id) ON DELETE SET NULL,
+    FOREIGN KEY (tecnico_asignado_id) REFERENCES Tecnicos(id) ON DELETE SET NULL
 );
 
--- Índices para búsquedas frecuentes
 CREATE INDEX IF NOT EXISTS idx_ordenes_numero ON OrdenesTrabajo(numero_orden);
 CREATE INDEX IF NOT EXISTS idx_ordenes_token ON OrdenesTrabajo(token);
 CREATE INDEX IF NOT EXISTS idx_ordenes_token_tecnico ON OrdenesTrabajo(token_firma_tecnico);
@@ -159,57 +145,53 @@ CREATE INDEX IF NOT EXISTS idx_ordenes_cliente ON OrdenesTrabajo(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_ordenes_vehiculo ON OrdenesTrabajo(vehiculo_id);
 CREATE INDEX IF NOT EXISTS idx_ordenes_tecnico ON OrdenesTrabajo(tecnico_asignado_id);
 CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON OrdenesTrabajo(estado);
-CREATE INDEX IF NOT EXISTS idx_ordenes_estado_trabajo ON OrdenesTrabajo(estado_trabajo);
 CREATE INDEX IF NOT EXISTS idx_ordenes_fecha ON OrdenesTrabajo(fecha_creacion);
 
 -- ============================================
 -- TABLA DE TÉCNICOS
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS Tecnicos (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nombre TEXT NOT NULL,
-  telefono TEXT NOT NULL UNIQUE,
-  email TEXT,
-  codigo_acceso TEXT NOT NULL UNIQUE,  -- PIN de 4 dígitos para login
-  activo INTEGER DEFAULT 1,  -- 1 = activo, 0 = inactivo
-  fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE Tecnicos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    telefono TEXT NOT NULL UNIQUE,
+    email TEXT,
+    pin TEXT NOT NULL,
+    activo INTEGER DEFAULT 1,
+    fecha_registro TEXT DEFAULT (datetime('now', 'localtime'))
 );
 
--- Índices
 CREATE INDEX IF NOT EXISTS idx_tecnicos_telefono ON Tecnicos(telefono);
-CREATE INDEX IF NOT EXISTS idx_tecnicos_codigo ON Tecnicos(codigo_acceso);
 CREATE INDEX IF NOT EXISTS idx_tecnicos_activo ON Tecnicos(activo);
 
--- Técnico de ejemplo para pruebas (PIN: 1234)
-INSERT OR IGNORE INTO Tecnicos (nombre, telefono, email, codigo_acceso)
+-- Técnico de ejemplo
+INSERT OR IGNORE INTO Tecnicos (nombre, telefono, email, pin)
 VALUES ('Técnico Prueba', '+56900000000', 'tecnico@globalpro.cl', '1234');
 
 -- ============================================
 -- TABLA DE ASIGNACIONES DE ÓRDENES A TÉCNICOS
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS AsignacionesTecnico (
+CREATE TABLE AsignacionesTecnico (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   orden_id INTEGER NOT NULL,
   tecnico_id INTEGER NOT NULL,
   fecha_asignacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  asignado_por TEXT,  -- Nombre del admin que asignó
+  asignado_por TEXT,
   FOREIGN KEY (orden_id) REFERENCES OrdenesTrabajo(id) ON DELETE CASCADE,
   FOREIGN KEY (tecnico_id) REFERENCES Tecnicos(id) ON DELETE CASCADE,
-  UNIQUE(orden_id)  -- Una orden solo puede estar asignada a un técnico a la vez
+  UNIQUE(orden_id)
 );
 
--- Índices
 CREATE INDEX IF NOT EXISTS idx_asignaciones_orden ON AsignacionesTecnico(orden_id);
 CREATE INDEX IF NOT EXISTS idx_asignaciones_tecnico ON AsignacionesTecnico(tecnico_id);
 CREATE INDEX IF NOT EXISTS idx_asignaciones_fecha ON AsignacionesTecnico(fecha_asignacion);
 
 -- ============================================
--- TABLA DE SEGUIMIENTO DE TRABAJO (Historial)
+-- TABLA DE SEGUIMIENTO DE TRABAJO
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS SeguimientoTrabajo (
+CREATE TABLE SeguimientoTrabajo (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   orden_id INTEGER NOT NULL,
   tecnico_id INTEGER NOT NULL,
@@ -223,7 +205,6 @@ CREATE TABLE IF NOT EXISTS SeguimientoTrabajo (
   FOREIGN KEY (tecnico_id) REFERENCES Tecnicos(id) ON DELETE CASCADE
 );
 
--- Índices
 CREATE INDEX IF NOT EXISTS idx_seguimiento_orden ON SeguimientoTrabajo(orden_id);
 CREATE INDEX IF NOT EXISTS idx_seguimiento_tecnico ON SeguimientoTrabajo(tecnico_id);
 CREATE INDEX IF NOT EXISTS idx_seguimiento_fecha ON SeguimientoTrabajo(fecha_hora);
@@ -232,19 +213,18 @@ CREATE INDEX IF NOT EXISTS idx_seguimiento_fecha ON SeguimientoTrabajo(fecha_hor
 -- TABLA DE FOTOS DE TRABAJO
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS FotosTrabajo (
+CREATE TABLE FotosTrabajo (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   orden_id INTEGER NOT NULL,
   tecnico_id INTEGER NOT NULL,
-  tipo_foto TEXT NOT NULL,  -- 'antes', 'despues', 'evidencia'
-  url_imagen TEXT NOT NULL,  -- URL en Cloudflare R2 o base64
+  tipo_foto TEXT NOT NULL,
+  url_imagen TEXT NOT NULL,
   descripcion TEXT,
   fecha_subida DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (orden_id) REFERENCES OrdenesTrabajo(id) ON DELETE CASCADE,
   FOREIGN KEY (tecnico_id) REFERENCES Tecnicos(id) ON DELETE CASCADE
 );
 
--- Índices
 CREATE INDEX IF NOT EXISTS idx_fotos_orden ON FotosTrabajo(orden_id);
 CREATE INDEX IF NOT EXISTS idx_fotos_tecnico ON FotosTrabajo(tecnico_id);
 CREATE INDEX IF NOT EXISTS idx_fotos_tipo ON FotosTrabajo(tipo_foto);
@@ -254,7 +234,7 @@ CREATE INDEX IF NOT EXISTS idx_fotos_fecha ON FotosTrabajo(fecha_subida);
 -- TABLA DE NOTAS DE TRABAJO
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS NotasTrabajo (
+CREATE TABLE NotasTrabajo (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   orden_id INTEGER NOT NULL,
   tecnico_id INTEGER NOT NULL,
@@ -264,7 +244,6 @@ CREATE TABLE IF NOT EXISTS NotasTrabajo (
   FOREIGN KEY (tecnico_id) REFERENCES Tecnicos(id) ON DELETE CASCADE
 );
 
--- Índices
 CREATE INDEX IF NOT EXISTS idx_notas_orden ON NotasTrabajo(orden_id);
 CREATE INDEX IF NOT EXISTS idx_notas_tecnico ON NotasTrabajo(tecnico_id);
 CREATE INDEX IF NOT EXISTS idx_notas_fecha ON NotasTrabajo(fecha_nota);
@@ -273,76 +252,24 @@ CREATE INDEX IF NOT EXISTS idx_notas_fecha ON NotasTrabajo(fecha_nota);
 -- TABLA DE PAGOS
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS Pagos (
+CREATE TABLE Pagos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   orden_id INTEGER NOT NULL,
   monto REAL NOT NULL,
   metodo_pago TEXT NOT NULL,
   fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP,
   observaciones TEXT,
-  registrador TEXT,
   FOREIGN KEY (orden_id) REFERENCES OrdenesTrabajo(id) ON DELETE CASCADE
 );
 
--- Índices
 CREATE INDEX IF NOT EXISTS idx_pagos_orden ON Pagos(orden_id);
 CREATE INDEX IF NOT EXISTS idx_pagos_fecha ON Pagos(fecha_pago);
 
 -- ============================================
--- VISTAS ÚTILES (Opcionales)
+-- VERIFICACIÓN
 -- ============================================
 
--- Vista para ver órdenes con información completa
-CREATE VIEW IF NOT EXISTS vista_ordenes_completas AS
-SELECT
-  o.id,
-  o.numero_orden,
-  o.token,
-  o.estado,
-  o.estado_trabajo,
-  o.patente_placa,
-  o.marca,
-  o.modelo,
-  o.anio,
-  o.cliente_nombre,
-  o.cliente_telefono,
-  o.cliente_rut,
-  o.fecha_ingreso,
-  o.hora_ingreso,
-  o.monto_total,
-  o.monto_abono,
-  o.monto_restante,
-  o.firma_imagen,
-  o.fecha_aprobacion,
-  t.nombre as tecnico_nombre,
-  t.telefono as tecnico_telefono,
-  o.fecha_creacion
-FROM OrdenesTrabajo o
-LEFT JOIN Tecnicos t ON o.tecnico_asignado_id = t.id;
-
--- Vista para ver historial de seguimiento con nombres
-CREATE VIEW IF NOT EXISTS vista_seguimiento_detalle AS
-SELECT
-  st.id,
-  st.orden_id,
-  o.numero_orden,
-  st.tecnico_id,
-  t.nombre as tecnico_nombre,
-  st.estado_anterior,
-  st.estado_nuevo,
-  st.latitud,
-  st.longitud,
-  st.fecha_hora,
-  st.observaciones
-FROM SeguimientoTrabajo st
-LEFT JOIN OrdenesTrabajo o ON st.orden_id = o.id
-LEFT JOIN Tecnicos t ON st.tecnico_id = t.id;
-
--- ============================================
--- FIN DEL SCRIPT
--- ============================================
---
--- Ejecutar con:
--- npx wrangler d1 execute <nombre-de-tu-base> --file=database-schema-complete.sql
---
--- ============================================
+SELECT 'Base de datos recreada exitosamente' AS mensaje,
+       (SELECT COUNT(*) FROM Tecnicos) AS tecnicos,
+       (SELECT COUNT(*) FROM OrdenesTrabajo) AS ordenes,
+       (SELECT COUNT(*) FROM Clientes) AS clientes;

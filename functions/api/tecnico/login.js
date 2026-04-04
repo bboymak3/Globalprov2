@@ -19,17 +19,9 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Determinar columna de acceso (migración pin -> codigo_acceso)
-    const tableInfo = await env.DB.prepare("PRAGMA table_info(Tecnicos)").all();
-    const columnNames = (tableInfo.results || []).map(col => col.name);
-    const accessColumn = columnNames.includes('codigo_acceso') ? 'codigo_acceso' : columnNames.includes('pin') ? 'pin' : null;
-
-    if (!accessColumn) {
-      throw new Error('Tabla Tecnicos no tiene columna de acceso (codigo_acceso/pin)');
-    }
-
+    // Verificar credenciales del técnico
     const tecnico = await env.DB.prepare(
-      `SELECT id, nombre, telefono, email FROM Tecnicos WHERE telefono = ? AND ${accessColumn} = ? AND activo = 1`
+      `SELECT id, nombre, telefono, email FROM Tecnicos WHERE telefono = ? AND pin = ? AND activo = 1`
     ).bind(data.telefono, data.pin).first();
 
     if (!tecnico) {

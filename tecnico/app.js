@@ -138,7 +138,7 @@ function renderizarOrdenes() {
     );
 
     const completadas = ordenes.filter(o =>
-        ['Completada', 'Aprobada', 'No Completada'].includes(o.estado_trabajo)
+        ['Completada', 'Aprobada', 'Usuario Satisfecho', 'No Completada', 'Cerrada'].includes(o.estado_trabajo)
     );
 
     renderizarListaOrdenes('ordenes-pendientes', pendientes);
@@ -245,6 +245,16 @@ function mostrarOrdenEnModal(orden) {
     if (orden.trabajo_componentes) trabajosHtml += `<p>✓ Componentes: ${orden.detalle_componentes || 'Sin detalle'}</p>`;
     document.getElementById('modal-trabajos').innerHTML = trabajosHtml || '<p class="text-muted">Sin trabajos</p>';
 
+    // Mostrar notas de cierre si existen
+    document.getElementById('modal-notas').innerHTML = orden.notas ? `<p>${orden.notas.replace(/\n/g, '<br>')}</p>` : '<p class="text-muted">Sin notas de cierre</p>';
+
+    // Mostrar flag de orden cerrada según estado_trabajo
+    const estaCerrada = orden.estado_trabajo === 'Cerrada';
+    const checkboxCerrada = document.getElementById('modal-orden-cerrada');
+    if (checkboxCerrada) {
+        checkboxCerrada.checked = estaCerrada;
+    }
+
     // Renderizar acciones según estado
     renderizarAcciones(orden);
 
@@ -298,21 +308,34 @@ function renderizarAcciones(orden) {
             `;
             break;
         case 'Completada':
-            if (!orden.firma_imagen) {
-                html = `
-                    <button class="btn btn-firma action-btn" onclick="enviarLinkFirma()">
-                        <i class="fab fa-whatsapp me-2"></i>Enviar Link para Firma
+            html = `
+                <div class="text-center">
+                    <p class="text-success"><i class="fas fa-check-circle me-2"></i>Trabajo completado</p>
+                    <button class="btn btn-success action-btn" onclick="aceptarYCerrarOrden()">
+                        <i class="fas fa-check me-2"></i>Aceptar y Cerrar Orden
                     </button>
-                    <button class="btn btn-outline-secondary action-btn mt-2" onclick="copiarLinkFirma()">
-                        <i class="fas fa-copy me-2"></i>Copiar Link de Firma
-                    </button>
-                `;
-            } else {
-                html = `<p class="text-center text-success"><i class="fas fa-check-circle me-2"></i>Firma registrada por el cliente</p>`;
-            }
+                </div>
+            `;
             break;
-        case 'Aprobada':
-            html = `<p class="text-center text-success"><i class="fas fa-check-double me-2"></i>Orden Aprobada por Cliente</p>`;
+        case 'Usuario Satisfecho':
+            html = `
+                <div class="text-center">
+                    <p class="text-success"><i class="fas fa-check-double me-2"></i>Cliente satisfecho con el trabajo</p>
+                    <button class="btn btn-success action-btn" onclick="cerrarOrden()">
+                        <i class="fas fa-lock me-2"></i>Cerrar Orden
+                    </button>
+                </div>
+            `;
+            break;
+        case 'Cerrada':
+            html = `
+                <div class="text-center">
+                    <p class="text-success"><i class="fas fa-check-circle me-2"></i>Orden ya cerrada</p>
+                    <button class="btn btn-secondary action-btn" disabled>
+                        <i class="fas fa-lock me-2"></i>Ya cerrada
+                    </button>
+                </div>
+            `;
             break;
         case 'No Completada':
             html = `<p class="text-center text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Orden No Completada</p>`;
@@ -637,20 +660,38 @@ async function generarTokenFirma() {
     }
 }
 
-function enviarLinkFirma() {
+function enviarLinkFirma(notasCierre = null, pagoCompletado = null, metodoPago = null) {
     generarTokenFirma().then(token => {
         if (!token) return;
 
-        const linkFirma = `${window.location.origin}/aprobar-tecnico?token=${token}`;
+        let linkFirma = `${window.location.origin}/aprobar-tecnico?token=${token}`;
+        if (notasCierre) linkFirma += `&notas=${encodeURIComponent(notasCierre)}`;
+        if (pagoCompletado !== null) linkFirma += `&pago_completado=${pagoCompletado}`;
+        if (metodoPago) linkFirma += `&metodo_pago=${encodeURIComponent(metodoPago)}`;
 
-        // Abrir WhatsApp con el link
-        const mensaje = encodeURIComponent(
-            `Hola, su orden de trabajo ha sido completada. Por favor firme la orden ingresando a: ${linkFirma}`
-        );
+        let mensajeCompleto = `Hola, su orden de trabajo #${String(ordenActual.numero_orden).padStart(6,'0')} está lista para su aceptación final.\n` +
+            `Resumen:\n` +
+            `Cliente: ${ordenActual.cliente_nombre || 'N/A'}\n` +
+            `Patente: ${ordenActual.patente_placa || 'N/A'}\n` +
+            `Trabajo: ${ordenActual.trabajo_frenos ? 'Frenos ' : ''}${ordenActual.trabajo_luces ? 'Luces ' : ''}${ordenActual.trabajo_tren_delantero ? 'Tren delantero ' : ''}${ordenActual.trabajo_correas ? 'Correas ' : ''}${ordenActual.trabajo_componentes ? 'Componentes ' : ''}\n` +
+            `Monto total: $${Number(ordenActual.monto_total || 0).toFixed(2)}\n` +
+            `Restante: $${Number(ordenActual.monto_restante || 0).toFixed(2)}\n`;
 
-        // Nota: El teléfono del cliente no está disponible en la app del técnico
-        // Por lo tanto, mostramos el link para que el técnico lo copie y lo envíe
-        mostrarModalLinkFirma(linkFirma);
+        if (notasCierre) {
+            mensajeCompleto += `Notas del técnico: ${notasCierre}\n`;
+        }
+
+        mensajeCompleto += `Por favor ingrese al siguiente link para revisar y firmar la aceptación:\n${linkFirma}`;
+
+        // Abrir WhatsApp si teléfono cliente existe
+        if (ordenActual && ordenActual.cliente_telefono) {
+            const telefonoLimpio = ordenActual.cliente_telefono.replace(/\D/g, '');
+            const whatsappUrl = `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(mensajeCompleto)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        // Mostrar modal con link + opción para abrir la página de firma directamente
+        mostrarModalLinkFirma(linkFirma, mensajeCompleto);
     });
 }
 
@@ -675,7 +716,7 @@ function copiarLinkFirma() {
     });
 }
 
-function mostrarModalLinkFirma(link) {
+function mostrarModalLinkFirma(link, mensaje = null) {
     // Crear modal dinámicamente
     const modalHtml = `
         <div class="modal fade" id="modalLinkFirma" tabindex="-1">
@@ -686,16 +727,22 @@ function mostrarModalLinkFirma(link) {
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <p class="text-muted">Envíe este link al cliente para que firme la orden:</p>
+                        <p class="text-muted">Envíe este link al cliente para que firme la orden y confirme el trabajo:</p>
                         <div class="input-group mb-3">
                             <input type="text" class="form-control" value="${link}" readonly id="link-firma-input">
                             <button class="btn btn-outline-success" onclick="copiarLinkFirmaModal('${link}')">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
+                        <div class="d-grid gap-2 mb-3">
+                            <button class="btn btn-primary" onclick="window.open('${link}', '_blank')">
+                                <i class="fas fa-external-link-alt me-2"></i>Abrir página de firma
+                            </button>
+                        </div>
+                        ${mensaje ? `<p class="small text-muted">Mensaje prellenado WhatsApp:<br>${mensaje.replace(/\n/g,'<br>')}</p>` : ''}
                         <div class="alert alert-info small">
                             <i class="fas fa-info-circle me-2"></i>
-                            El cliente podrá ver y firmar la orden desde su propio dispositivo.
+                            El cliente tendrá un resumen de la orden + canvas de firma en la página.
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -732,6 +779,83 @@ function copiarLinkFirmaModal(link) {
         document.body.removeChild(input);
         mostrarNotificacion('success', 'Link Copiado', 'El link ha sido copiado al portapapeles');
     });
+}
+
+async function aceptarYCerrarOrden() {
+    if (!ordenActual || !tecnicoActual) {
+        mostrarNotificacion('error', 'Error', 'No se puede procesar la orden en este momento');
+        return;
+    }
+
+    if (ordenActual.estado_trabajo === 'Cerrada') {
+        mostrarNotificacion('warning', 'Orden cerrada', 'Esta orden ya está cerrada y no puede volver a procesarse.');
+        return;
+    }
+
+    if (ordenActual.firma_imagen) {
+        mostrarNotificacion('info', 'Firmado', 'La orden ya está firmada por el cliente. Se cerrará ahora.');
+    }
+
+    // Pedir información de cierre al técnico
+    const notasCierre = prompt('Agregar notas de cierre (opcional)');
+
+    const pagoCompletado = confirm('¿El cliente terminó de cancelar?');
+    let metodoPago = null;
+    let notaPago = '';
+
+    if (pagoCompletado) {
+        metodoPago = prompt('Método de pago (Efectivo / Transferencia)').trim();
+        if (!metodoPago) {
+            metodoPago = 'No especificado';
+        }
+        notaPago = `Pago completado. Método: ${metodoPago}`;
+    } else {
+        const motivoNoPago = prompt('Indica motivo por el cual no terminó de cancelar (opcional)');
+        notaPago = motivoNoPago ? `Pago pendiente: ${motivoNoPago}` : 'Pago pendiente: no especificó motivo';
+    }
+
+    const restante = Number(ordenActual.monto_restante || 0);
+    let notaSaldo = '';
+    if (restante > 0) {
+        notaSaldo = `Saldo pendiente: $${restante.toFixed(2)}`;
+    } else if (restante < 0) {
+        notaSaldo = `Saldo a favor del cliente: $${Math.abs(restante).toFixed(2)}`;
+    } else {
+        notaSaldo = 'Saldo cancelado completamente.';
+    }
+
+    const notasFinales = [notasCierre, notaPago, notaSaldo].filter(Boolean).join(' | ');
+
+    // Guardar temporalmente las notas para usar en la firma
+    ordenActual.notas_cierre_temp = notasFinales;
+    ordenActual.pago_completado_temp = pagoCompletado;
+    ordenActual.metodo_pago_temp = metodoPago;
+
+    // Enviar link para firma con la información
+    mostrarNotificacion('info', 'Enviando link', 'Enviando link de aceptación al cliente...');
+    enviarLinkFirma(notasFinales, pagoCompletado, metodoPago);
+}
+
+function ordenarMontoRestante() {
+    if (!ordenActual) return;
+    if ( Number(ordenActual.monto_restante || 0) > 0 && confirm('¿Registrar el saldo pendiente como pagado?')) {
+        ordenActual.monto_restante = 0;
+    }
+}
+
+function enviarResumenWhatsApp() {
+    if (!ordenActual) return;
+
+    const tel = ordenActual.cliente_telefono.replace(/\D/g, '');
+    const mensaje = encodeURIComponent(`Pedido #${String(ordenActual.numero_orden).padStart(6, '0')} cerrado.\n` +
+        `Cliente: ${ordenActual.cliente_nombre || 'N/A'}\n` +
+        `Vehículo: ${ordenActual.marca || 'N/A'} ${ordenActual.modelo || ''} ${ordenActual.patente_placa || ''}\n` +
+        `Estado final: ${ordenActual.estado_trabajo || ordenActual.estado}\n` +
+        `Fecha cierre: ${new Date().toLocaleString('es-CL')}\n` +
+        `Gracias por su confianza en Global Pro!`);
+
+    const whatsappUrl = `https://wa.me/${tel}?text=${mensaje}`;
+    window.open(whatsappUrl, '_blank');
 }
 
 // ============================================
@@ -832,7 +956,9 @@ function obtenerClaseEstado(estado) {
         'Pendiente Piezas': 'estado-pendiente-piezas',
         'Completada': 'estado-completada',
         'Aprobada': 'estado-aprobada',
-        'No Completada': 'estado-no-completada'
+        'Usuario Satisfecho': 'estado-aprobada',
+        'No Completada': 'estado-no-completada',
+        'Cerrada': 'estado-cerrada'
     };
     return clases[estado] || 'bg-secondary';
 }

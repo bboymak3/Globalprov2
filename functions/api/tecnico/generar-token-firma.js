@@ -36,13 +36,13 @@ export async function onRequestPost(context) {
 
     // Verificar si ya tiene un token de firma
     const tokenExistente = await env.DB.prepare(
-      "SELECT token FROM OrdenesTrabajo WHERE id = ? AND token_firma_tecnico IS NOT NULL"
+      "SELECT token_firma_tecnico FROM OrdenesTrabajo WHERE id = ? AND token_firma_tecnico IS NOT NULL"
     ).bind(data.orden_id).first();
 
     if (tokenExistente) {
       return new Response(JSON.stringify({
         success: true,
-        token: tokenExistente.token
+        token: tokenExistente.token_firma_tecnico
       }), {
         headers: { 'Content-Type': 'application/json' }
       });
