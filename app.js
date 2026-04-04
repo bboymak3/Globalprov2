@@ -1100,8 +1100,19 @@ async function cargarLiquidaciones() {
         `;
     }
 
+    const periodo = document.getElementById('filtro-periodo')?.value || '';
+    const tecnicoId = document.getElementById('filtro-tecnico-id')?.value || '';
+    const fechaInicio = document.getElementById('filtro-fecha-inicio')?.value || '';
+    const fechaFin = document.getElementById('filtro-fecha-fin')?.value || '';
+
+    const params = new URLSearchParams();
+    if (periodo) params.set('periodo', periodo);
+    if (tecnicoId) params.set('filtro_tecnico_id', tecnicoId);
+    if (fechaInicio) params.set('fecha_inicio', fechaInicio);
+    if (fechaFin) params.set('fecha_fin', fechaFin);
+
     try {
-        const response = await fetch(`${API_BASE}/admin/liquidar-tecnicos`);
+        const response = await fetch(`${API_BASE}/admin/liquidar-tecnicos?${params.toString()}`);
         const data = await response.json();
 
         if (data.success && data.liquidaciones) {
@@ -1124,6 +1135,28 @@ async function cargarLiquidaciones() {
                 </div>
             `;
         }
+    }
+}
+
+async function cargarTecnicosLiquidacion() {
+    const select = document.getElementById('filtro-tecnico-id');
+    if (!select) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/admin/tecnicos`);
+        const data = await response.json();
+
+        if (data.success && data.tecnicos) {
+            select.innerHTML = '<option value="">Todos los técnicos</option>';
+            data.tecnicos.forEach(tecnico => {
+                const option = document.createElement('option');
+                option.value = tecnico.id;
+                option.textContent = `${tecnico.nombre} (${tecnico.telefono})`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error al cargar técnicos para liquidación:', error);
     }
 }
 
@@ -1215,8 +1248,18 @@ async function verOrdenesTecnico(tecnicoId, tecnicoNombre) {
         </div>
     `;
 
+    const periodo = document.getElementById('filtro-periodo')?.value || '';
+    const fechaInicio = document.getElementById('filtro-fecha-inicio')?.value || '';
+    const fechaFin = document.getElementById('filtro-fecha-fin')?.value || '';
+
+    const params = new URLSearchParams();
+    params.set('tecnico_id', tecnicoId);
+    if (periodo) params.set('periodo', periodo);
+    if (fechaInicio) params.set('fecha_inicio', fechaInicio);
+    if (fechaFin) params.set('fecha_fin', fechaFin);
+
     try {
-        const response = await fetch(`${API_BASE}/admin/liquidar-tecnicos?tecnico_id=${tecnicoId}`);
+        const response = await fetch(`${API_BASE}/admin/liquidar-tecnicos?${params.toString()}`);
         const data = await response.json();
 
         if (data.success && data.ordenes) {

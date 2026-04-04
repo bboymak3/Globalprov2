@@ -7,8 +7,34 @@ export async function onRequestGet(context) {
   const { env, request } = context;
   const url = new URL(request.url);
   const tecnicoId = url.searchParams.get('tecnico_id');
+  const filtroTecnicoId = url.searchParams.get('filtro_tecnico_id');
+  const periodo = url.searchParams.get('periodo');
+  const fechaInicio = url.searchParams.get('fecha_inicio');
+  const fechaFin = url.searchParams.get('fecha_fin');
 
   try {
+    const fechaField = 'o.fecha_aprobacion';
+    let fechaCondiciones = '';
+    const binds = [];
+
+    if (periodo === 'hoy') {
+      fechaCondiciones += ` AND date(${fechaField}) = date('now','localtime')`;
+    } else if (periodo === 'mes') {
+      fechaCondiciones += ` AND strftime('%Y-%m', ${fechaField}) = strftime('%Y-%m', 'now','localtime')`;
+    } else if (periodo === 'ano') {
+      fechaCondiciones += ` AND strftime('%Y', ${fechaField}) = strftime('%Y', 'now','localtime')`;
+    }
+
+    if (fechaInicio) {
+      fechaCondiciones += ` AND date(${fechaField}) >= date(?)`;
+      binds.push(fechaInicio);
+    }
+
+    if (fechaFin) {
+      fechaCondiciones += ` AND date(${fechaField}) <= date(?)`;
+      binds.push(fechaFin);
+    }
+
     if (tecnicoId) {
       const ordenes = await env.DB.prepare(`
         SELECT
@@ -19,10 +45,12 @@ export async function onRequestGet(context) {
           monto_total,
           fecha_creacion,
           fecha_aprobacion
-        FROM OrdenesTrabajo
+        FROM OrdenesTrabajo o
         WHERE tecnico_asignado_id = ?
+          AND o.estado = 'Aprobada'
+          ${fechaCondiciones}
         ORDER BY fecha_creacion DESC
-      `).bind(tecnicoId).all();
+      `).bind(tecnicoId, ...binds).all();
 
       return new Response(JSON.stringify({
         success: true,
@@ -35,6 +63,7 @@ export async function onRequestGet(context) {
       });
     }
 
+    const whereTecnico = filtroTecnicoId ? 'WHERE t.id = ?' : '';
     const liquidaciones = await env.DB.prepare(`
       SELECT
         t.id,
@@ -46,9 +75,11 @@ export async function onRequestGet(context) {
       LEFT JOIN OrdenesTrabajo o
         ON o.tecnico_asignado_id = t.id
         AND o.estado = 'Aprobada'
+        ${fechaCondiciones}
+      ${whereTecnico}
       GROUP BY t.id
       ORDER BY ordenes_realizadas DESC, monto_total DESC
-    `).all();
+    `).bind(...(filtroTecnicoId ? [filtroTecnicoId, ...binds] : binds)).all();
 
     return new Response(JSON.stringify({
       success: true,

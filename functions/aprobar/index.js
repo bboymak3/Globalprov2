@@ -58,8 +58,75 @@ function getErrorPage(title, message) {
 
 function getApprovedPage(orden) {
   const n = String(orden.numero_orden).padStart(6, '0');
-  const firmaImg = orden.firma_imagen ? '<img src="' + orden.firma_imagen + '" style="max-width:200px;margin-top:20px;border:1px solid #ddd;border-radius:8px;">' : '';
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Aprobada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-green-100 flex items-center justify-center min-h-screen p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md"><div class="text-6xl mb-4">✅</div><h1 class="text-3xl font-black text-green-700 mb-2">¡Orden Aprobada!</h1><p class="text-gray-600 mb-4">Su firma ha sido guardada exitosamente.</p><div class="bg-green-50 rounded-xl p-4 mb-6"><p class="text-sm text-gray-600">Orden N°</p><p class="text-2xl font-bold text-green-700">' + n + '</p><p class="text-sm text-gray-500 mt-2">Fecha: ' + (orden.fecha_aprobacion || 'N/A') + '</p></div>' + firmaImg + '<p class="text-sm text-gray-500 mt-6">¡Gracias por confiar en Global Pro Automotriz!</p></div></body></html>';
+  const cliente = orden.cliente_nombre || 'Cliente';
+  const fechaCreacion = orden.fecha_creacion || 'N/A';
+  const fechaAprobacion = orden.fecha_aprobacion || 'N/A';
+  const total = (orden.monto_total || 0).toLocaleString('es-CL');
+  const verOtUrl = '/ver-ot?token=' + encodeURIComponent(orden.token);
+  const firmaImg = orden.firma_imagen ? '<img src="' + orden.firma_imagen + '" style="max-width:240px;margin-top:20px;border:1px solid #ddd;border-radius:8px;">' : '<div class="text-sm text-gray-600 mt-3">No se registró imagen de firma.</div>';
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden Aprobada</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-slate-100 min-h-screen p-4"><div class="max-w-3xl mx-auto">' +
+    '<div class="bg-white rounded-3xl shadow-2xl overflow-hidden">' +
+    '  <div class="bg-emerald-600 p-6 text-center text-white">' +
+    '    <div class="text-6xl mb-3">✅</div>' +
+    '    <h1 class="text-3xl font-black mb-2">Orden Aprobada</h1>' +
+    '    <p class="text-sm opacity-90">Esta orden ya se encuentra firmada y aprobada.</p>' +
+    '  </div>' +
+    '  <div class="p-6">' +
+    '    <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">' +
+    '      <div class="col">' +
+    '        <div class="border rounded-3xl p-4 h-100">' +
+    '          <p class="text-sm text-slate-500 mb-1">Cliente</p>' +
+    '          <p class="text-lg font-semibold">' + cliente + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="border rounded-3xl p-4 h-100">' +
+    '          <p class="text-sm text-slate-500 mb-1">Orden</p>' +
+    '          <p class="text-lg font-semibold">#' + n + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="border rounded-3xl p-4 h-100">' +
+    '          <p class="text-sm text-slate-500 mb-1">Fecha creación</p>' +
+    '          <p class="text-lg font-semibold">' + fechaCreacion + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="col">' +
+    '        <div class="border rounded-3xl p-4 h-100">' +
+    '          <p class="text-sm text-slate-500 mb-1">Fecha cierre</p>' +
+    '          <p class="text-lg font-semibold">' + fechaAprobacion + '</p>' +
+    '        </div>' +
+    '      </div>' +
+    '    </div>' +
+    '    <div class="bg-slate-50 border border-slate-200 rounded-3xl p-5 mb-4">' +
+    '      <div class="d-flex justify-content-between align-items-center mb-3">' +
+    '        <div>' +
+    '          <p class="text-sm text-slate-500 mb-1">Monto total</p>' +
+    '          <p class="text-2xl font-bold">$' + total + '</p>' +
+    '        </div>' +
+    '        <div class="text-end">' +
+    '          <p class="text-sm text-slate-500 mb-1">Estado</p>' +
+    '          <span class="badge bg-success text-white">Aprobada</span>' +
+    '        </div>' +
+    '      </div>' +
+    '      <div class="mt-3">' +
+    '        <p class="text-sm text-slate-500 mb-2">Firma registrada:</p>' +
+    '        <div class="text-center">' + firmaImg + '</div>' +
+    '      </div>' +
+    '    </div>' +
+    '    <div class="d-grid gap-3">' +
+    '      <a href="' + verOtUrl + '" class="btn btn-primary btn-lg">' +
+    '        <i class="fas fa-eye me-2"></i>Ver Orden</a>' +
+    '      <button type="button" onclick="window.print()" class="btn btn-outline-secondary btn-lg">' +
+    '        <i class="fas fa-print me-2"></i>Imprimir</button>' +
+    '      <a href="' + verOtUrl + '" class="btn btn-outline-success btn-lg">' +
+    '        <i class="fas fa-download me-2"></i>Descargar / Ver PDF</a>' +
+    '    </div>' +
+    '    <p class="text-center text-sm text-slate-500 mt-4">Puede volver a usar este mismo enlace para ver la orden cuando quiera.</p>' +
+    '  </div>' +
+    '</div>' +
+    '</div>';
 }
 
 function getCancelledPage(orden) {

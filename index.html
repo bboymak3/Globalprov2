@@ -730,6 +730,36 @@
                 </button>
             </div>
             <div class="card-body">
+                <form id="form-liquidacion-filtros" class="row gy-3 gx-3 align-items-end mb-4" onsubmit="event.preventDefault(); cargarLiquidaciones();">
+                    <div class="col-md-2">
+                        <label class="form-label">Periodo</label>
+                        <select id="filtro-periodo" class="form-select">
+                            <option value="">Todas</option>
+                            <option value="hoy">Hoy</option>
+                            <option value="mes">Este Mes</option>
+                            <option value="ano">Este Año</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Desde</label>
+                        <input id="filtro-fecha-inicio" type="date" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Hasta</label>
+                        <input id="filtro-fecha-fin" type="date" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Técnico</label>
+                        <select id="filtro-tecnico-id" class="form-select">
+                            <option value="">Todos los técnicos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" type="submit">
+                            <i class="fas fa-filter me-2"></i>Aplicar filtros
+                        </button>
+                    </div>
+                </form>
                 <div id="resumen-liquidacion" class="row gy-3">
                     <div class="col-md-3">
                         <div class="border rounded-3 p-3 text-center">
