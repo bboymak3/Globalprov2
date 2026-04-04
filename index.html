@@ -224,6 +224,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="mostrarSeccion('tecnicos')">Gestión Técnicos</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="mostrarSeccion('liquidar')">Liquidar Técnicos</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -708,6 +711,68 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Sección: Liquidar Técnicos -->
+    <div id="seccion-liquidar" style="display: none;">
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h1 class="display-4 fw-bold" style="color: var(--gp-red);">Liquidar Técnicos</h1>
+                <p class="text-muted">Resumen de órdenes por técnico, monto generado y ganancia del 40%</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-hand-holding-usd me-2"></i>Resumen de Liquidación</span>
+                <button class="btn btn-sm btn-light" onclick="cargarLiquidaciones()">
+                    <i class="fas fa-sync-alt me-1"></i>Actualizar
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="resumen-liquidacion" class="row gy-3">
+                    <div class="col-md-3">
+                        <div class="border rounded-3 p-3 text-center">
+                            <div class="text-muted">Técnicos</div>
+                            <div class="h4" id="liquidar-total-tecnicos">0</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded-3 p-3 text-center">
+                            <div class="text-muted">Órdenes Realizadas</div>
+                            <div class="h4" id="liquidar-total-ordenes">0</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded-3 p-3 text-center">
+                            <div class="text-muted">Monto Generado</div>
+                            <div class="h4" id="liquidar-total-monto">$0</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded-3 p-3 text-center">
+                            <div class="text-muted">Ganancia 40%</div>
+                            <div class="h4" id="liquidar-total-ganancia">$0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-2"></i>Liquidación por Técnico
+            </div>
+            <div class="card-body">
+                <div id="tabla-liquidacion">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-spinner fa-spin"></i> Cargando liquidaciones...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="detalle-ordenes-tecnico"></div>
     </div>
 
     <!-- Modal: Ver Orden -->

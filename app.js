@@ -838,9 +838,16 @@ function mostrarSeccion(seccion) {
     if (seccionTecnicos) {
         seccionTecnicos.style.display = 'none';
     }
+    const seccionLiquidar = document.getElementById('seccion-liquidar');
+    if (seccionLiquidar) {
+        seccionLiquidar.style.display = 'none';
+    }
 
     // Mostrar la sección seleccionada
-    document.getElementById('seccion-' + seccion).style.display = 'block';
+    const seccionSeleccionada = document.getElementById('seccion-' + seccion);
+    if (seccionSeleccionada) {
+        seccionSeleccionada.style.display = 'block';
+    }
 
     // Actualizar nav
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
@@ -848,10 +855,12 @@ function mostrarSeccion(seccion) {
         event.target.classList.add('active');
     }
 
-    // Si es la sección de técnicos, cargar datos
+    // Cargar datos según la sección seleccionada
     if (seccion === 'tecnicos') {
         cargarTecnicos();
         cargarOrdenesAprobadas();
+    } else if (seccion === 'liquidar') {
+        cargarLiquidaciones();
     }
 }
 
@@ -1079,6 +1088,234 @@ function renderizarListaOrdenesAprobadas(ordenes) {
 
     html += '</div>';
     document.getElementById('lista-ordenes-aprobadas').innerHTML = html;
+}
+
+async function cargarLiquidaciones() {
+    const tabla = document.getElementById('tabla-liquidacion');
+    if (tabla) {
+        tabla.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-spinner fa-spin"></i> Cargando liquidaciones...
+            </div>
+        `;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/admin/liquidar-tecnicos`);
+        const data = await response.json();
+
+        if (data.success && data.liquidaciones) {
+            renderizarLiquidaciones(data.liquidaciones);
+        } else {
+            if (tabla) {
+                tabla.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <p>No hay datos de liquidación disponibles</p>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Error al cargar liquidaciones:', error);
+        if (tabla) {
+            tabla.innerHTML = `
+                <div class="text-center text-danger py-4">
+                    <p>Error al cargar liquidaciones</p>
+                </div>
+            `;
+        }
+    }
+}
+
+function renderizarLiquidaciones(liquidaciones) {
+    const tabla = document.getElementById('tabla-liquidacion');
+    const detalle = document.getElementById('detalle-ordenes-tecnico');
+    const totalTecnicos = document.getElementById('liquidar-total-tecnicos');
+    const totalOrdenes = document.getElementById('liquidar-total-ordenes');
+    const totalMonto = document.getElementById('liquidar-total-monto');
+    const totalGanancia = document.getElementById('liquidar-total-ganancia');
+
+    if (detalle) {
+        detalle.innerHTML = '';
+    }
+
+    const sumaOrdenes = liquidaciones.reduce((acc, item) => acc + (item.ordenes_realizadas || 0), 0);
+    const sumaMonto = liquidaciones.reduce((acc, item) => acc + (item.monto_total || 0), 0);
+    const sumaGanancia = sumaMonto * 0.4;
+
+    if (totalTecnicos) totalTecnicos.textContent = liquidaciones.length.toString();
+    if (totalOrdenes) totalOrdenes.textContent = sumaOrdenes.toString();
+    if (totalMonto) totalMonto.textContent = `$${sumaMonto.toLocaleString('es-CL')}`;
+    if (totalGanancia) totalGanancia.textContent = `$${sumaGanancia.toLocaleString('es-CL')}`;
+
+    if (!tabla) return;
+
+    if (liquidaciones.length === 0) {
+        tabla.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <p>No se encontraron técnicos o órdenes asignadas.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Técnico</th>
+                        <th>Órdenes</th>
+                        <th>Monto Generado</th>
+                        <th>Ganancia 40%</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    liquidaciones.forEach(tecnico => {
+        const nombre = (tecnico.nombre || 'Sin nombre').replace(/'/g, "\\'");
+        html += `
+            <tr>
+                <td>${tecnico.nombre || 'Sin nombre'}</td>
+                <td>${tecnico.ordenes_realizadas || 0}</td>
+                <td>$${(tecnico.monto_total || 0).toLocaleString('es-CL')}</td>
+                <td>$${(tecnico.ganancia_tecnico || 0).toLocaleString('es-CL')}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="verOrdenesTecnico(${tecnico.id}, '${nombre}')">
+                        Ver Órdenes (${tecnico.ordenes_realizadas || 0})
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    tabla.innerHTML = html;
+}
+
+async function verOrdenesTecnico(tecnicoId, tecnicoNombre) {
+    const detalle = document.getElementById('detalle-ordenes-tecnico');
+    if (!detalle) return;
+
+    detalle.innerHTML = `
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-list me-2"></i>Órdenes de ${tecnicoNombre}
+            </div>
+            <div class="card-body text-center text-muted py-4">
+                <i class="fas fa-spinner fa-spin"></i> Cargando órdenes...
+            </div>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`${API_BASE}/admin/liquidar-tecnicos?tecnico_id=${tecnicoId}`);
+        const data = await response.json();
+
+        if (data.success && data.ordenes) {
+            renderizarOrdenesLiquidacion(data.ordenes, tecnicoNombre);
+        } else {
+            detalle.innerHTML = `
+                <div class="card mb-4">
+                    <div class="card-body text-center text-muted py-4">
+                        <p>No hay órdenes para este técnico</p>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error al cargar órdenes del técnico:', error);
+        detalle.innerHTML = `
+            <div class="card mb-4">
+                <div class="card-body text-center text-danger py-4">
+                    <p>Error al cargar las órdenes del técnico</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function renderizarOrdenesLiquidacion(ordenes, tecnicoNombre) {
+    const detalle = document.getElementById('detalle-ordenes-tecnico');
+    if (!detalle) return;
+
+    if (!ordenes || ordenes.length === 0) {
+        detalle.innerHTML = `
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-list me-2"></i>Órdenes de ${tecnicoNombre}
+                </div>
+                <div class="card-body text-center text-muted py-4">
+                    <p>No hay órdenes registradas para este técnico.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-list me-2"></i>Órdenes de ${tecnicoNombre}
+                    <span class="badge bg-secondary ms-2">${ordenes.length} órdenes</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th># Orden</th>
+                                <th>Cliente</th>
+                                <th>Creación</th>
+                                <th>Cierre</th>
+                                <th>Estatus</th>
+                                <th>Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+
+    ordenes.forEach(orden => {
+        const fechaCreacion = orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-CL') : 'N/A';
+        const fechaCierre = orden.fecha_aprobacion ? new Date(orden.fecha_aprobacion).toLocaleDateString('es-CL') : 'N/A';
+        const numeroFormateado = String(orden.numero_orden).padStart(6, '0');
+
+        html += `
+            <tr>
+                <td>#${numeroFormateado}</td>
+                <td>${orden.cliente_nombre || 'N/A'}</td>
+                <td>${fechaCreacion}</td>
+                <td>${fechaCierre}</td>
+                <td>${orden.estado || 'N/A'}</td>
+                <td>$${(orden.monto_total || 0).toLocaleString('es-CL')}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="verOrden(${orden.id})">
+                        Ver OT
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+
+    detalle.innerHTML = html;
 }
 
 function copiarNumeroOrden(numeroOrden) {
