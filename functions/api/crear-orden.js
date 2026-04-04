@@ -94,16 +94,60 @@ export async function onRequestPost(context) {
       vehiculoId = result.meta.last_row_id;
     }
 
-    // Función auxiliar para escapar strings
-    const escapeSql = (str) => {
-      if (str === null || str === undefined || str === '') return 'NULL';
-      return "'" + String(str).replace(/'/g, "''").replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/\r/g, '\\r') + "'";
-    };
-
-    // Insertar orden de trabajo
-    const stmt = `INSERT INTO OrdenesTrabajo (numero_orden, token, cliente_id, vehiculo_id, patente_placa, fecha_ingreso, hora_ingreso, recepcionista, marca, modelo, anio, cilindrada, combustible, kilometraje, direccion, trabajo_frenos, detalle_frenos, trabajo_luces, detalle_luces, trabajo_tren_delantero, detalle_tren_delantero, trabajo_correas, detalle_correas, trabajo_componentes, detalle_componentes, nivel_combustible, check_paragolfe_delantero_der, check_puerta_delantera_der, check_puerta_trasera_der, check_paragolfe_trasero_izq, check_otros_carroceria, monto_total, monto_abono, monto_restante, metodo_pago, estado, fecha_creacion) VALUES (${nuevoNumero}, '${token}', ${clienteId}, ${vehiculoId}, '${data.patente}', ${escapeSql(data.fecha_ingreso)}, ${escapeSql(data.hora_ingreso)}, ${escapeSql(data.recepcionista)}, ${escapeSql(data.marca)}, ${escapeSql(data.modelo)}, ${data.anio || 'NULL'}, ${escapeSql(data.cilindrada)}, ${escapeSql(data.combustible)}, ${escapeSql(data.kilometraje)}, ${escapeSql(data.direccion)}, ${data.trabajo_frenos || 0}, ${escapeSql(data.detalle_frenos)}, ${data.trabajo_luces || 0}, ${escapeSql(data.detalle_luces)}, ${data.trabajo_tren_delantero || 0}, ${escapeSql(data.detalle_tren_delantero)}, ${data.trabajo_correas || 0}, ${escapeSql(data.detalle_correas)}, ${data.trabajo_componentes || 0}, ${escapeSql(data.detalle_componentes)}, ${escapeSql(data.nivel_combustible)}, ${data.check_paragolfe_delantero_der || 0}, ${data.check_puerta_delantera_der || 0}, ${data.check_puerta_trasera_der || 0}, ${data.check_paragolfe_trasero_izq || 0}, ${escapeSql(data.check_otros_carroceria)}, ${data.monto_total || 0}, ${data.monto_abono || 0}, ${data.monto_restante || 0}, ${escapeSql(data.metodo_pago)}, 'Enviada', datetime('now', 'localtime'))`;
-
-    await env.DB.exec(stmt);
+    // Insertar orden de trabajo - 35 columnas, 35 valores
+    await env.DB.prepare(`
+      INSERT INTO OrdenesTrabajo (
+        numero_orden, token, cliente_id, vehiculo_id, patente_placa,
+        fecha_ingreso, hora_ingreso, recepcionista,
+        marca, modelo, anio, cilindrada, combustible, kilometraje,
+        trabajo_frenos, detalle_frenos,
+        trabajo_luces, detalle_luces,
+        trabajo_tren_delantero, detalle_tren_delantero,
+        trabajo_correas, detalle_correas,
+        trabajo_componentes, detalle_componentes,
+        nivel_combustible,
+        check_paragolfe_delantero_der, check_puerta_delantera_der,
+        check_puerta_trasera_der, check_paragolfe_trasero_izq, check_otros_carroceria,
+        monto_total, monto_abono, monto_restante, metodo_pago,
+        estado
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      nuevoNumero,                                    // 1
+      token,                                          // 2
+      clienteId,                                      // 3
+      vehiculoId,                                     // 4
+      data.patente,                                   // 5
+      data.fecha_ingreso,                             // 6
+      data.hora_ingreso || null,                      // 7
+      data.recepcionista || null,                     // 8
+      data.marca || null,                             // 9
+      data.modelo || null,                            // 10
+      data.anio || null,                              // 11
+      data.cilindrada || null,                        // 12
+      data.combustible || null,                       // 13
+      data.kilometraje || null,                       // 14
+      data.trabajo_frenos || 0,                       // 15
+      data.detalle_frenos || null,                    // 16
+      data.trabajo_luces || 0,                        // 17
+      data.detalle_luces || null,                     // 18
+      data.trabajo_tren_delantero || 0,               // 19
+      data.detalle_tren_delantero || null,            // 20
+      data.trabajo_correas || 0,                      // 21
+      data.detalle_correas || null,                   // 22
+      data.trabajo_componentes || 0,                  // 23
+      data.detalle_componentes || null,               // 24
+      data.nivel_combustible || null,                 // 25
+      data.check_paragolfe_delantero_der || 0,        // 26
+      data.check_puerta_delantera_der || 0,           // 27
+      data.check_puerta_trasera_der || 0,             // 28
+      data.check_paragolfe_trasero_izq || 0,          // 29
+      data.check_otros_carroceria || null,            // 30
+      data.monto_total || 0,                          // 31
+      data.monto_abono || 0,                          // 32
+      data.monto_restante || 0,                       // 33
+      data.metodo_pago || null,                       // 34
+      'Enviada'                                       // 35
+    ).run();
 
     // Actualizar número de orden en configuración
     await env.DB.prepare(

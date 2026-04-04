@@ -9,6 +9,13 @@ export async function onRequestPost(context) {
   try {
     const data = await request.json();
 
+    console.log('Datos recibidos en aprobar-orden:', {
+      tieneToken: !!data.token,
+      tokenLength: data.token ? data.token.length : 0,
+      tieneFirma: !!data.firma,
+      firmaLength: data.firma ? data.firma.length : 0
+    });
+
     if (!data.token || !data.firma) {
       return new Response(JSON.stringify({
         success: false,
@@ -21,28 +28,42 @@ export async function onRequestPost(context) {
 
     // Verificar que la orden existe y está en estado "Enviada"
     const orden = await env.DB.prepare(
-      "SELECT * FROM OrdenesTrabajo WHERE token = ? AND estado = 'Enviada'"
+      "SELECT * FROM OrdenesTrabajo WHERE token = ?"
     ).bind(data.token).first();
+
+    console.log('Orden encontrada:', !!orden, 'Estado:', orden?.estado);
 
     if (!orden) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Orden no encontrada o ya procesada'
+        error: 'Orden no encontrada'
       }), {
         headers: { 'Content-Type': 'application/json' },
         status: 404
       });
     }
 
+    if (orden.estado !== 'Enviada') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: `La orden ya está en estado: ${orden.estado}`
+      }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
+
     // Actualizar orden con firma y cambiar estado
-    await env.DB.prepare(`
+    const result = await env.DB.prepare(`
       UPDATE OrdenesTrabajo
       SET estado = 'Aprobada',
           firma_imagen = ?,
-          fecha_aprobacion = datetime('now', 'localtime'),
-          aprobado_por = 'Cliente'
+          fecha_aprobacion = datetime('now'),
+          fecha_actualizacion = datetime('now')
       WHERE token = ?
     `).bind(data.firma, data.token).run();
+
+    console.log('Resultado UPDATE:', result.meta, 'Filas afectadas:', result.meta?.changes || 0);
 
     // Obtener orden actualizada
     const ordenActualizada = await env.DB.prepare(`
@@ -56,6 +77,8 @@ export async function onRequestPost(context) {
       WHERE o.token = ?
     `).bind(data.token).first();
 
+    console.log('Orden actualizada estado:', ordenActualizada?.estado, 'Tiene firma:', !!ordenActualizada?.firma_imagen);
+
     return new Response(JSON.stringify({
       success: true,
       orden: ordenActualizada
@@ -67,7 +90,8 @@ export async function onRequestPost(context) {
     console.error('Error al aprobar orden:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      error: error.message,
+      stack: error.stack
     }), {
       headers: { 'Content-Type': 'application/json' },
       status: 500
