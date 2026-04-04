@@ -309,7 +309,7 @@ function renderizarAcciones(orden) {
             break;
         case 'Completada':
             html = `
-                <div class="orden-card mb-3">
+                <div id="cierre-panel" class="orden-card mb-3">
                     <h6 class="fw-bold mb-3"><i class="fas fa-check-circle me-2"></i>Completar Cierre de Orden</h6>
                     <div class="mb-3">
                         <label class="form-label">Notas de cierre <span class="text-danger">*</span></label>
@@ -354,7 +354,7 @@ function renderizarAcciones(orden) {
             break;
         case 'Usuario Satisfecho':
             html = `
-                <div class="orden-card mb-3">
+                <div id="cierre-panel" class="orden-card mb-3">
                     <h6 class="fw-bold mb-3"><i class="fas fa-check-double me-2"></i>Completar Cierre de Orden</h6>
                     <div class="mb-3">
                         <label class="form-label">Notas de cierre <span class="text-danger">*</span></label>
@@ -920,25 +920,34 @@ async function aceptarYCerrarOrden() {
         const metodoPagoParam = pagoCompletado ? metodoPago : `Pago pendiente: ${motivoNoPago}`;
 
         // Construir URL de firma con parámetros
-        const firmaUrl = `/aprobar-tecnico?token=${encodeURIComponent(token)}&notas=${encodeURIComponent(notasCierre)}&pago_completado=${pagoCompletado}&metodo_pago=${encodeURIComponent(metodoPagoParam)}`;
+        const firmaUrl = `${window.location.origin}/aprobar-tecnico?token=${encodeURIComponent(token)}&notas=${encodeURIComponent(notasCierre)}&pago_completado=${pagoCompletado}&metodo_pago=${encodeURIComponent(metodoPagoParam)}`;
 
-        // Abrir ventana emergente para firma
-        const firmaWindow = window.open(firmaUrl, 'firma-cliente', 'width=800,height=600,scrollbars=yes,resizable=yes');
-
-        if (!firmaWindow) {
-            mostrarNotificacion('error', 'Error', 'No se pudo abrir la ventana de firma. Verifique que no tenga bloqueador de pop-ups.');
-            return;
+        // Mostrar botones para compartir el link
+        const cierrePanel = document.getElementById('cierre-panel');
+        if (cierrePanel) {
+            cierrePanel.innerHTML = `
+                <div class="orden-card mb-3">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-share-alt me-2"></i>Compartir Link de Firma</h6>
+                    <p class="text-muted mb-3">Envía este link al cliente para que firme y cierre la orden.</p>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" onclick="copiarLinkFirma('${firmaUrl}')">
+                            <i class="fas fa-copy me-2"></i>Copiar Link
+                        </button>
+                        <button class="btn btn-success" onclick="enviarWhatsApp('${firmaUrl}')">
+                            <i class="fab fa-whatsapp me-2"></i>Enviar por WhatsApp
+                        </button>
+                    </div>
+                </div>
+            `;
         }
 
-        mostrarNotificacion('info', 'Firma requerida', 'Se ha abierto una ventana para que el cliente firme. La orden se cerrará automáticamente después de la firma.');
+        mostrarNotificacion('success', 'Link generado', 'Se ha generado el link de firma. Compártelo con el cliente.');
 
-        // Opcional: verificar cuando se cierra la ventana y recargar órdenes
-        const checkClosed = setInterval(() => {
-            if (firmaWindow.closed) {
-                clearInterval(checkClosed);
-                cargarOrdenes(); // Recargar órdenes para ver si se cerró
-            }
-        }, 1000);
+    } catch (error) {
+        console.error('Error al generar token de firma:', error);
+        mostrarNotificacion('error', 'Error', 'No se pudo iniciar el proceso de firma. Intente nuevamente.');
+    }
+}
 
     } catch (error) {
         console.error('Error al generar token de firma:', error);
@@ -1111,6 +1120,35 @@ function mostrarNotificacion(tipo, titulo, mensaje) {
     setTimeout(() => {
         toastContainer.remove();
     }, 3000);
+}
+
+function copiarLinkFirma(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        mostrarNotificacion('success', 'Link Copiado', 'El link ha sido copiado al portapapeles');
+    }).catch(err => {
+        console.error('Error al copiar:', err);
+        mostrarNotificacion('error', 'Error', 'No se pudo copiar el link');
+    });
+}
+
+function enviarWhatsApp(url) {
+    if (!ordenActual || !ordenActual.cliente_telefono) {
+        mostrarNotificacion('error', 'Error', 'No se encontró el número de teléfono del cliente');
+        return;
+    }
+
+    // Limpiar el número de teléfono (quitar espacios, +, etc.)
+    let telefono = ordenActual.cliente_telefono.replace(/\s+/g, '').replace(/\+/g, '');
+
+    // Si no tiene prefijo internacional, asumir Chile (+56)
+    if (!telefono.startsWith('56')) {
+        telefono = '56' + telefono;
+    }
+
+    const mensaje = encodeURIComponent(`Firma la orden aquí: ${url}`);
+    const whatsappUrl = `https://wa.me/${telefono}?text=${mensaje}`;
+
+    window.open(whatsappUrl, '_blank');
 }
 
 // Actualizar órdenes cada 30 segundos
