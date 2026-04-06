@@ -147,7 +147,8 @@
             gap: 10px;
             flex-wrap: wrap;
         }
-        .btn-radio-group .btn {
+        .btn-radio-group .btn,
+        .btn-option-group .option-btn {
             flex: 1 1 48%;
             min-width: 130px;
             padding: 16px 18px;
@@ -155,14 +156,63 @@
             font-size: 1rem;
             font-weight: 700;
             box-shadow: 0 10px 16px rgba(0,0,0,0.09);
+            text-transform: uppercase;
+            border: 2px solid #000;
+            background: #111;
+            color: #ffc800;
+        }
+        .btn-radio-group .btn {
+            background: #000;
+            color: #ffc800;
+        }
+        .btn-radio-group .btn.btn-outline-dark {
+            border-color: #ffc800;
+            color: #ffc800;
+            background: #111;
+        }
+        .btn-radio-group .btn.btn-outline-dark:hover,
+        .btn-option-group .option-btn:hover {
+            background: #ffc800;
+            color: #111;
+            border-color: #d90429;
         }
         .btn-check:checked + .btn {
+            background: #ffc800;
+            color: #111;
+            border-color: #d90429;
+        }
+        .btn-check:focus-visible + .btn {
+            box-shadow: 0 0 0 0.2rem rgba(255,200,0,0.35);
+        }
+        .btn-option-group {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .btn-option-group .option-btn.active {
             background: #000;
             color: #ffc800;
             border-color: #ffc800;
         }
-        .btn-check:focus-visible + .btn {
-            box-shadow: 0 0 0 0.2rem rgba(255,200,0,0.35);
+        .modal-header .modal-title {
+            font-size: 1.7rem;
+            letter-spacing: 0.03em;
+        }
+        .orden-card h6 {
+            font-size: 1.3rem;
+        }
+        .orden-card .detail-row {
+            font-size: 1.05rem;
+        }
+        .orden-card .detail-row span {
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+        .estado-badge {
+            font-size: 0.95rem;
+        }
+        .action-btn {
+            font-size: 1.05rem;
         }
         .bottom-nav {
             position: fixed;

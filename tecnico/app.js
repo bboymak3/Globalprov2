@@ -326,7 +326,13 @@ function renderizarAcciones(orden) {
                     </div>
                     <div id="pago-metodo-panel" class="mb-3" style="display:none;">
                         <label class="form-label">Método de pago</label>
-                        <select id="metodo-pago-cierre" class="form-select">
+                        <div class="btn-option-group">
+                            <button type="button" class="option-btn" onclick="seleccionarMetodoPagoCierre('Efectivo')">Efectivo</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMetodoPagoCierre('Transferencia')">Transferencia</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMetodoPagoCierre('Mercado Pago')">Mercado Pago</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMetodoPagoCierre('Cheque')">Cheque</button>
+                        </div>
+                        <select id="metodo-pago-cierre" class="form-select" style="display:none;">
                             <option value="">Seleccione método...</option>
                             <option value="Efectivo">Efectivo</option>
                             <option value="Transferencia">Transferencia</option>
@@ -336,7 +342,13 @@ function renderizarAcciones(orden) {
                     </div>
                     <div id="pago-motivo-panel" class="mb-3" style="display:none;">
                         <label class="form-label">Motivo de pago pendiente</label>
-                        <select id="motivo-no-pago-cierre" class="form-select">
+                        <div class="btn-option-group">
+                            <button type="button" class="option-btn" onclick="seleccionarMotivoNoPagoCierre('Cliente no tenía efectivo')">Sin efectivo</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMotivoNoPagoCierre('Pago pendiente por transferencia')">Transferencia</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMotivoNoPagoCierre('Cliente no se encontraba')">No estaba</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMotivoNoPagoCierre('Otro')">Otro</button>
+                        </div>
+                        <select id="motivo-no-pago-cierre" class="form-select" style="display:none;">
                             <option value="">Seleccione motivo...</option>
                             <option value="Cliente no tenía efectivo">Cliente no tenía efectivo</option>
                             <option value="Pago pendiente por transferencia">Pago pendiente por transferencia</option>
@@ -369,7 +381,13 @@ function renderizarAcciones(orden) {
                     </div>
                     <div id="pago-metodo-panel" class="mb-3" style="display:none;">
                         <label class="form-label">Método de pago</label>
-                        <select id="metodo-pago-cierre" class="form-select">
+                        <div class="btn-option-group">
+                            <button type="button" class="option-btn" onclick="seleccionarMetodoPagoCierre('Efectivo')">Efectivo</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMetodoPagoCierre('Transferencia')">Transferencia</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMetodoPagoCierre('Mercado Pago')">Mercado Pago</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMetodoPagoCierre('Cheque')">Cheque</button>
+                        </div>
+                        <select id="metodo-pago-cierre" class="form-select" style="display:none;">
                             <option value="">Seleccione método...</option>
                             <option value="Efectivo">Efectivo</option>
                             <option value="Transferencia">Transferencia</option>
@@ -379,7 +397,13 @@ function renderizarAcciones(orden) {
                     </div>
                     <div id="pago-motivo-panel" class="mb-3" style="display:none;">
                         <label class="form-label">Motivo de pago pendiente</label>
-                        <select id="motivo-no-pago-cierre" class="form-select">
+                        <div class="btn-option-group">
+                            <button type="button" class="option-btn" onclick="seleccionarMotivoNoPagoCierre('Cliente no tenía efectivo')">Sin efectivo</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMotivoNoPagoCierre('Pago pendiente por transferencia')">Transferencia</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMotivoNoPagoCierre('Cliente no se encontraba')">No estaba</button>
+                            <button type="button" class="option-btn" onclick="seleccionarMotivoNoPagoCierre('Otro')">Otro</button>
+                        </div>
+                        <select id="motivo-no-pago-cierre" class="form-select" style="display:none;">
                             <option value="">Seleccione motivo...</option>
                             <option value="Cliente no tenía efectivo">Cliente no tenía efectivo</option>
                             <option value="Pago pendiente por transferencia">Pago pendiente por transferencia</option>
@@ -950,9 +974,38 @@ function actualizarPanelPagoCierre() {
     const pagoNo = document.getElementById('pago-cerrado-no')?.checked;
     const metodoPanel = document.getElementById('pago-metodo-panel');
     const motivoPanel = document.getElementById('pago-motivo-panel');
+    const metodoSelect = document.getElementById('metodo-pago-cierre');
+    const motivoSelect = document.getElementById('motivo-no-pago-cierre');
 
     if (metodoPanel) metodoPanel.style.display = pagoSi ? 'block' : 'none';
     if (motivoPanel) motivoPanel.style.display = pagoNo ? 'block' : 'none';
+
+    if (pagoSi && motivoSelect) {
+        motivoSelect.value = '';
+        document.querySelectorAll('#pago-motivo-panel .option-btn').forEach(btn => btn.classList.remove('active'));
+    }
+    if (pagoNo && metodoSelect) {
+        metodoSelect.value = '';
+        document.querySelectorAll('#pago-metodo-panel .option-btn').forEach(btn => btn.classList.remove('active'));
+    }
+}
+
+function seleccionarMetodoPagoCierre(metodo) {
+    const metodoSelect = document.getElementById('metodo-pago-cierre');
+    if (!metodoSelect) return;
+    metodoSelect.value = metodo;
+    document.querySelectorAll('#pago-metodo-panel .option-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim() === metodo);
+    });
+}
+
+function seleccionarMotivoNoPagoCierre(motivo) {
+    const motivoSelect = document.getElementById('motivo-no-pago-cierre');
+    if (!motivoSelect) return;
+    motivoSelect.value = motivo;
+    document.querySelectorAll('#pago-motivo-panel .option-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim() === motivo);
+    });
 }
 
 function ordenarMontoRestante() {
