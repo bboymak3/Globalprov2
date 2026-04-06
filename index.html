@@ -71,6 +71,51 @@
             border-color: #800000;
         }
 
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .btn-menu {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+            padding: 18px 14px;
+            border-radius: 18px;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            background-color: #111;
+            color: #ffc800;
+            border: 2px solid #ffc800;
+            box-shadow: 0 12px 25px rgba(0,0,0,0.2);
+        }
+
+        .btn-menu:hover,
+        .btn-menu:focus {
+            background-color: #ffc800;
+            color: #111;
+            border-color: #d90429;
+            text-decoration: none;
+        }
+
+        .navbar-nav {
+            width: 100%;
+        }
+
+        .navbar-collapse {
+            flex-basis: 100%;
+        }
+
+        .navbar {
+            padding-bottom: 8px;
+        }
+
         .patente-input {
             font-size: 2rem;
             font-weight: bold;
@@ -214,20 +259,12 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#" onclick="mostrarSeccion('crear')">Nueva Orden</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="mostrarSeccion('buscar')">Buscar Órdenes</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="mostrarSeccion('tecnicos')">Gestión Técnicos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="mostrarSeccion('liquidar')">Liquidar Técnicos</a>
-                    </li>
-                </ul>
+                <div class="menu-grid navbar-nav">
+                    <a class="btn-menu" href="#" onclick="mostrarSeccion('crear')">Nueva Orden</a>
+                    <a class="btn-menu" href="#" onclick="mostrarSeccion('buscar')">Buscar Órdenes</a>
+                    <a class="btn-menu" href="#" onclick="mostrarSeccion('tecnicos')">Gestión Técnicos</a>
+                    <a class="btn-menu" href="#" onclick="mostrarSeccion('liquidar')">Liquidar Técnicos</a>
+                </div>
             </div>
         </div>
     </nav>
