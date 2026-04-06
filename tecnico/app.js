@@ -317,13 +317,11 @@ function renderizarAcciones(orden) {
                     </div>
                     <div class="mb-3">
                         <label class="form-label">¿El cliente pagó?</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="pago-cerrado" id="pago-cerrado-si" value="si" onclick="actualizarPanelPagoCierre()">
-                            <label class="form-check-label" for="pago-cerrado-si">Sí</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="pago-cerrado" id="pago-cerrado-no" value="no" onclick="actualizarPanelPagoCierre()">
-                            <label class="form-check-label" for="pago-cerrado-no">No</label>
+                        <div class="btn-radio-group">
+                            <input type="radio" class="btn-check" name="pago-cerrado" id="pago-cerrado-si" value="si" onclick="actualizarPanelPagoCierre()">
+                            <label class="btn btn-outline-dark" for="pago-cerrado-si">Sí</label>
+                            <input type="radio" class="btn-check" name="pago-cerrado" id="pago-cerrado-no" value="no" onclick="actualizarPanelPagoCierre()">
+                            <label class="btn btn-outline-dark" for="pago-cerrado-no">No</label>
                         </div>
                     </div>
                     <div id="pago-metodo-panel" class="mb-3" style="display:none;">
@@ -346,7 +344,7 @@ function renderizarAcciones(orden) {
                             <option value="Otro">Otro</option>
                         </select>
                     </div>
-                    <button class="btn btn-success action-btn" onclick="aceptarYCerrarOrden()">
+                    <button class="btn btn-completar action-btn" onclick="aceptarYCerrarOrden()">
                         <i class="fas fa-check me-2"></i>Cerrar Orden
                     </button>
                 </div>
@@ -362,13 +360,11 @@ function renderizarAcciones(orden) {
                     </div>
                     <div class="mb-3">
                         <label class="form-label">¿El cliente pagó?</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="pago-cerrado" id="pago-cerrado-si" value="si" onclick="actualizarPanelPagoCierre()">
-                            <label class="form-check-label" for="pago-cerrado-si">Sí</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="pago-cerrado" id="pago-cerrado-no" value="no" onclick="actualizarPanelPagoCierre()">
-                            <label class="form-check-label" for="pago-cerrado-no">No</label>
+                        <div class="btn-radio-group">
+                            <input type="radio" class="btn-check" name="pago-cerrado" id="pago-cerrado-si" value="si" onclick="actualizarPanelPagoCierre()">
+                            <label class="btn btn-outline-dark" for="pago-cerrado-si">Sí</label>
+                            <input type="radio" class="btn-check" name="pago-cerrado" id="pago-cerrado-no" value="no" onclick="actualizarPanelPagoCierre()">
+                            <label class="btn btn-outline-dark" for="pago-cerrado-no">No</label>
                         </div>
                     </div>
                     <div id="pago-metodo-panel" class="mb-3" style="display:none;">
@@ -391,7 +387,7 @@ function renderizarAcciones(orden) {
                             <option value="Otro">Otro</option>
                         </select>
                     </div>
-                    <button class="btn btn-success action-btn" onclick="aceptarYCerrarOrden()">
+                    <button class="btn btn-completar action-btn" onclick="aceptarYCerrarOrden()">
                         <i class="fas fa-check me-2"></i>Cerrar Orden
                     </button>
                 </div>
